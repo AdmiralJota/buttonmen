@@ -407,6 +407,8 @@ class ApiSpec {
                 'dob_day' => 'number',
                 'comment' => 'string',
                 'autopass' => 'boolean',
+                'monitorRedirectsToGame' => 'boolean',
+                'monitorRedirectsToForum' => 'boolean',
             ),
             'permitted' => array(
                 'current_password' => 'string',
