@@ -410,12 +410,21 @@ class ApiSpec {
         'savePlayerInfo' => array(
             'mandatory' => array(
                 'name_irl' => 'string',
+                'is_email_public' => 'boolean',
                 'dob_month' => 'number',
                 'dob_day' => 'number',
+                'gender' => array(
+                    'arg_type' => 'string',
+                    'maxlength' => 100,
+                ),
                 'comment' => 'string',
                 'autopass' => 'boolean',
                 'monitor_redirects_to_game' => 'boolean',
                 'monitor_redirects_to_forum' => 'boolean',
+                'player_color' => 'color',
+                'opponent_color' => 'color',
+                'neutral_color_a' => 'color',
+                'neutral_color_b' => 'color',
             ),
             'permitted' => array(
                 'current_password' => 'string',
@@ -538,8 +547,14 @@ class ApiSpec {
                 case 'exactString':
                     return $this->verify_argument_exact_string_type($arg, $argtype['values']);
                 case 'array':
-                default:
                     return $this->verify_argument_array_type($arg, $argtype);
+                default:
+                    $checkfunc = 'verify_argument_of_type_' . $argtype['arg_type'];
+
+                    if (method_exists($this, $checkfunc)) {
+                        return $this->$checkfunc($arg, $argtype);
+                    }
+                    return FALSE;
             }
         } else {
             $checkfunc = 'verify_argument_of_type_' . $argtype;
@@ -644,8 +659,24 @@ class ApiSpec {
     }
 
     // verify that the argument is a string
-    protected function verify_argument_of_type_string($arg) {
+    protected function verify_argument_of_type_string($arg, $argtype = array()) {
         if (is_string($arg)) {
+            $length = mb_strlen($arg, mb_detect_encoding($arg));
+            if (isset($argtype['maxlength']) && $length > $argtype['maxlength']) {
+                return FALSE;
+            }
+            if (isset($argtype['minlength']) && $length < $argtype['minlength']) {
+                return FALSE;
+            }
+            return TRUE;
+        }
+        return FALSE;
+    }
+
+    // verify that the argument is a string
+    protected function verify_argument_of_type_color($arg) {
+        if (is_string($arg) &&
+            preg_match('/^#[0-9a-f]{6}$/i', $arg)) {
             return TRUE;
         }
         return FALSE;

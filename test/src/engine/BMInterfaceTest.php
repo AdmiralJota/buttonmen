@@ -74,10 +74,14 @@ class BMInterfaceTest extends PHPUnit_Framework_TestCase {
 
         $infoArray = array(
             'name_irl' => '',
+            'is_email_public' => FALSE,
+            'dob_month' => 0,
+            'dob_day' => 0,
+            'gender' => '',
             'comment' => '',
-            'autopass' => 1,
             'monitor_redirects_to_game' => 0,
             'monitor_redirects_to_forum' => 0,
+            'autopass' => 1
         );
         $addlInfo = array('dob_month' => 0, 'dob_day' => 0);
 
@@ -111,12 +115,18 @@ class BMInterfaceTest extends PHPUnit_Framework_TestCase {
         $this->assertArrayNotHasKey('password_hashed', $resultArray);
         $this->assertArrayHasKey('name_irl', $resultArray);
         $this->assertArrayHasKey('email', $resultArray);
+        $this->assertArrayHasKey('is_email_public', $resultArray);
         $this->assertArrayHasKey('dob_month', $resultArray);
         $this->assertArrayHasKey('dob_day', $resultArray);
+        $this->assertArrayHasKey('gender', $resultArray);
         $this->assertArrayHasKey('autopass', $resultArray);
         $this->assertArrayHasKey('monitor_redirects_to_game', $resultArray);
         $this->assertArrayHasKey('monitor_redirects_to_forum', $resultArray);
         $this->assertArrayHasKey('comment', $resultArray);
+        $this->assertArrayHasKey('player_color', $resultArray);
+        $this->assertArrayHasKey('opponent_color', $resultArray);
+        $this->assertArrayHasKey('neutral_color_a', $resultArray);
+        $this->assertArrayHasKey('neutral_color_b', $resultArray);
         $this->assertArrayHasKey('last_action_time', $resultArray);
         $this->assertArrayHasKey('creation_time', $resultArray);
         $this->assertArrayHasKey('fanatic_button_id', $resultArray);
@@ -145,8 +155,16 @@ class BMInterfaceTest extends PHPUnit_Framework_TestCase {
     public function test_set_player_info() {
         $infoArray = array(
             'name_irl' => '',
+            'is_email_public' => FALSE,
+            'dob_month' => 0,
+            'dob_day' => 0,
+            'gender' => '',
             'comment' => '',
             'autopass' => 1,
+            'player_color' => '#dd99dd',
+            'opponent_color' => '#ddffdd',
+            'neutral_color_a' => '#cccccc',
+            'neutral_color_b' => '#dddddd',
             'monitor_redirects_to_game' => 1,
             'monitor_redirects_to_forum' => 1
         );
@@ -3075,4 +3093,3 @@ class BMInterfaceTest extends PHPUnit_Framework_TestCase {
     ////////////////////////////////////////////////////////////
 
 }
-

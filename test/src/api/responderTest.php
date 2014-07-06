@@ -728,10 +728,16 @@ class responderTest extends PHPUnit_Framework_TestCase {
         $args = array(
             'type' => 'savePlayerInfo',
             'name_irl' => 'Test User',
+            'is_email_public' => 'False',
             'dob_month' => '2',
             'dob_day' => '29',
+            'gender' => '',
             'comment' => '',
             'autopass' => 'True',
+            'player_color' => '#dd99dd',
+            'opponent_color' => '#ddffdd',
+            'neutral_color_a' => '#cccccc',
+            'neutral_color_b' => '#dddddd',
             'monitor_redirects_to_game' => 'False',
             'monitor_redirects_to_forum' => 'False',
         );

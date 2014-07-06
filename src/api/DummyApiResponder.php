@@ -278,6 +278,8 @@ class DummyApiResponder {
             'gameStateArray' => array(),
             'statusArray' => array(),
             'inactivityArray' => array(),
+            'playerColorArray' => array(),
+            'opponentColorArray' => array(),
         );
 
         for ($gameIdx = 1; $gameIdx <= 24; $gameIdx++) {
@@ -302,6 +304,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "SPECIFY_DICE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "17 minutes";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_2(&$data) {
@@ -318,6 +322,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "SPECIFY_DICE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "2 hours";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_3(&$data) {
@@ -334,6 +340,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "START_TURN";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "5 minutes";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_4(&$data) {
@@ -350,6 +358,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "START_TURN";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "6 days";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_5() {
@@ -370,6 +380,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "SPECIFY_DICE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "44 seconds";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_7(&$data) {
@@ -386,6 +398,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "REACT_TO_INITIATIVE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "22 minutes";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_8(&$data) {
@@ -402,6 +416,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "REACT_TO_INITIATIVE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "19 hours";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_9(&$data) {
@@ -418,6 +434,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "REACT_TO_INITIATIVE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "1 day";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_10() {
@@ -446,6 +464,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "CHOOSE_AUXILIARY_DICE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "16 days";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_14(&$data) {
@@ -462,6 +482,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "CHOOSE_AUXILIARY_DICE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "38 minutes";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_15() {
@@ -482,6 +504,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "CHOOSE_RESERVE_DICE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "1 minute";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_17(&$data) {
@@ -498,6 +522,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "CHOOSE_RESERVE_DICE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "21 hours";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
     }
 
     protected function add_active_game_data_18() {
@@ -518,6 +544,56 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "SPECIFY_DICE";
         $data['statusArray'][] = "ACTIVE";
         $data['inactivityArray'][] = "10 minutes";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
+    }
+
+    protected function add_active_game_data_20() {
+        // fake game 20 is an open game
+    }
+
+    protected function add_active_game_data_21() {
+        // fake game 21 is an open game
+    }
+
+    protected function add_active_game_data_22(&$data) {
+        $data['gameIdArray'][] = 22;
+        $data['opponentIdArray'][] = 2;
+        $data['opponentNameArray'][] = "tester2";
+        $data['myButtonNameArray'][] = "Adam Spam";
+        $data['opponentButtonNameArray'][] = "Adam Spam";
+        $data['nWinsArray'][] = 0;
+        $data['nLossesArray'][] = 0;
+        $data['nDrawsArray'][] = 0;
+        $data['nTargetWinsArray'][] = 3;
+        $data['isAwaitingActionArray'][] = 1;
+        $data['gameStateArray'][] = "ADJUST_FIRE_DICE";
+        $data['statusArray'][] = "ACTIVE";
+        $data['inactivityArray'][] = "4 minutes";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
+    }
+
+    protected function add_active_game_data_23(&$data) {
+        $data['gameIdArray'][] = 23;
+        $data['opponentIdArray'][] = 2;
+        $data['opponentNameArray'][] = "tester2";
+        $data['myButtonNameArray'][] = "Adam Spam";
+        $data['opponentButtonNameArray'][] = "Adam Spam";
+        $data['nWinsArray'][] = 0;
+        $data['nLossesArray'][] = 0;
+        $data['nDrawsArray'][] = 0;
+        $data['nTargetWinsArray'][] = 3;
+        $data['isAwaitingActionArray'][] = 0;
+        $data['gameStateArray'][] = "ADJUST_FIRE_DICE";
+        $data['statusArray'][] = "ACTIVE";
+        $data['inactivityArray'][] = "4 minutes";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
+    }
+
+    protected function add_active_game_data_24() {
+        // tester1 is not a participant in fake game 24
     }
 
     protected function add_active_game_data_20() {
@@ -579,6 +655,8 @@ class DummyApiResponder {
             'gameStateArray' => array(),
             'statusArray' => array(),
             'inactivityArray' => array(),
+            'playerColorArray' => array(),
+            'opponentColorArray' => array(),
         );
 
         // game 5
@@ -595,6 +673,8 @@ class DummyApiResponder {
         $data['gameStateArray'][] = "END_GAME";
         $data['statusArray'][] = "COMPLETE";
         $data['inactivityArray'][] = "8 days";
+        $data['playerColorArray'][] = "#dd99dd";
+        $data['opponentColorArray'][] = "#ddffdd";
 
         return array($data, "All game details retrieved successfully.");
     }
@@ -780,8 +860,11 @@ class DummyApiResponder {
                                 'name_ingame' => 'tester1',
                                 'name_irl' => '',
                                 'email' => 'tester1@example.com',
+                                'is_email_public' => FALSE,
                                 'status' => 'active',
-                                'dob' => NULL,
+                                'dob_month' => 0,
+                                'dob_day' => 0,
+                                'gender' => '',
                                 'autopass' => TRUE,
                                 'monitor_redirects_to_game' => FALSE,
                                 'monitor_redirects_to_forum' => FALSE,
@@ -807,8 +890,10 @@ class DummyApiResponder {
             'name_ingame' => $args['playerName'],
             'name_irl' => 'Test User',
             'email' => NULL,
+            'is_email_public' => FALSE,
             'dob_month' => 2,
             'dob_day' => 29,
+            'gender' => '',
             'comment' => '',
             'last_access_time' => 0,
             'creation_time' => 0,

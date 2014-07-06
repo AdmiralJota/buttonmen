@@ -23,14 +23,6 @@ Game.GAME_STATE_END_GAME = 'END_GAME';
 // Convenience HTML used in the mat layout to break text
 Game.SPACE_BULLET = ' &nbsp;&bull;&nbsp; ';
 
-// Colors used by the game display
-Game.COLORS = {
-  'players': {
-    'player': '#dd99dd',
-    'opponent': '#ddffdd',
-  },
-};
-
 // Default number of action and chat log entries to display
 Game.logEntryLimit = 10;
 
@@ -121,8 +113,11 @@ Game.showStatePage = function() {
   // page, display it now
   Env.showStatusMessage();
 
-  // Set colors for use in game - for now, all games use the same colors
-  Game.color = Game.COLORS.players;
+  // Set colors for use in game
+  Game.color = {
+    'player': Api.game.player.playerColor,
+    'opponent': Api.game.opponent.playerColor,
+  };
 
   // Figure out what to do next based on the game state
   if (Api.game.load_status == 'ok') {
@@ -1888,6 +1883,37 @@ Game.dieRecipeTable = function(table_action, active) {
           }
           dieLRow.append(
             Game.dieValueSelectTd('init_react_' + i, initopts,
+              Api.game.player.activeDieArray[i].value, defaultval));
+        } else {
+          dieLRow.append($('<td>', {
+            'text': Game.activeDieFieldString(
+              i, 'value', Api.game.player.activeDieArray),
+          }));
+        }
+        dieRRow.append(opponentEnt);
+        dieRRow.append($('<td>', {
+          'text': Game.activeDieFieldString(
+            i, 'value', Api.game.opponent.activeDieArray),
+        }));
+      } else if (table_action == 'adjust_fire_dice') {
+        dieLRow.append(playerEnt);
+        var fireopts = [];
+        if (active) {
+          if (i in Api.game.player.fireOptions) {
+            fireopts = Api.game.player.fireOptions[i].concat();
+          }
+        }
+        if ((active) && (fireopts.length > 0)) {
+          defaultval = Api.game.player.activeDieArray[i].value;
+          if ('fireDieIdxArray' in Game.activity) {
+            $.each(Game.activity.fireDieIdxArray, function(idx, val) {
+              if (val == i) {
+                defaultval = Game.activity.fireDieValueArray[idx];
+              }
+            });
+          }
+          dieLRow.append(
+            Game.dieValueSelectTd('fire_adjust_' + i, fireopts,
               Api.game.player.activeDieArray[i].value, defaultval));
         } else {
           dieLRow.append($('<td>', {
