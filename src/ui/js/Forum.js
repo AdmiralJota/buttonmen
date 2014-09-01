@@ -3,6 +3,8 @@ var Forum = {
   'scrollTarget': undefined,
 };
 
+Forum.bodyDivId = 'forum_page';
+
 Forum.OPEN_STAR = '&#9734;';
 Forum.SOLID_STAR = '&#9733;';
 
@@ -17,13 +19,13 @@ Forum.SCROLL_ANIMATION_MILLISECONDS = 200;
 
 ////////////////////////////////////////////////////////////////////////
 // Action flow through this page:
-// * Forum.showForumPage() is the landing function. Always call
+// * Forum.showLoggedInPage() is the landing function. Always call
 //   this first. It sets up #forum_page and reads the URL to find out
 //   the current board, thread and/or post, which it sets in Env.history.state.
 //   It also binds Forum.showPage() to the page event that triggers on the
 //   forward/backward button. Then it calls Forum.showPage() directly.
-// * Forum.showPage() reads Env.history.state to find out what it should be
-//   displaying. Then it calls the API to set either Api.forum_overview,
+// * Forum.showPage() reads the state it was passed to find out what it should
+//   be displaying. Then it calls the API to set either Api.forum_overview,
 //   Api.forum_board or Api.forum_thread as appropriate, then passes control
 //   to Forum.showOverview(), Forum.showBoard() or Forum.showThread().
 // * Forum.showOverview() builds a version of Forum.page that includes a list
@@ -34,9 +36,9 @@ Forum.SCROLL_ANIMATION_MILLISECONDS = 200;
 // * Forum.showThread() builds a version of Forum.page that includes a list
 //   of posts on a given thread and a form to create a new one (attaching the
 //   Forum.formReplyToThread() event to it). Then it calls Forum.arrangePage().
-// * Forum.arrangePage() sets the contents of <div id="forum_page">
-//   on the live page. It also binds Forum.formLinkToSubPage to every
-//   .pseudoLink element (e.g., the links to a given board or thread).
+// * Forum.arrangePage() calls Login.arrangePage(). It also binds
+//   Forum.formLinkToSubPage to every .pseudoLink element (e.g., the links to a
+//   given board or thread).
 //
 // Major events:
 // * Forum.formLinkToSubPage() is called every time a user clicks on an internal
@@ -53,15 +55,7 @@ Forum.SCROLL_ANIMATION_MILLISECONDS = 200;
 ////////////////////////////////////////////////////////////////////////
 // These functions are part of the main action flow to load the page
 
-Forum.showForumPage = function() {
-  // Setup necessary elements for displaying status messages
-  Env.setupEnvStub();
-
-  // Make sure the div element that we will need exists in the page body
-  if ($('#forum_page').length === 0) {
-    $('body').append($('<div>', {'id': 'forum_page', }));
-  }
-
+Forum.showLoggedInPage = function() {
   $(window).bind('popstate', Forum.showPage);
 
   var state = {
@@ -71,21 +65,19 @@ Forum.showForumPage = function() {
   };
   Env.history.replaceState(state, 'Button Men Online &mdash; Forum',
     Env.window.location.hash);
-  Forum.showPage();
+  Forum.showPage(state);
 };
 
-Forum.showPage = function() {
-  if (!Login.logged_in) {
-    Env.message = {
-      'type': 'error',
-      'text': 'Can\'t view the forum because you\'re not logged in',
-    };
-    Forum.arrangePage();
-    return;
+Forum.showPage = function(state) {
+  // If this was called from a popState event, the parameter might be an event
+  // object containing a state rather than the state itself
+  if (state.state !== undefined) {
+    state = state.state;
   }
-
+  if (state.originalEvent !== undefined) {
+    state = state.originalEvent.state;
+  }
   // Display the appropriate version of the page depending on the current state
-  var state = Env.history.state;
   if (state.threadId) {
     Api.loadForumThread(state.threadId, state.postId, Forum.showThread);
   } else if (state.boardId) {
@@ -130,11 +122,20 @@ Forum.showOverview = function() {
   });
   markReadTd.append(markReadButton);
   markReadButton.click(function() {
-    Forum.parseFormPost({
-      'type': 'markForumRead',
-      'timestamp': Api.forum_overview.timestamp,
-    }, 'forum_overview', $(this), Forum.showOverview);
-    Api.getNextNewPostId(Login.addNewPostLink);
+    Forum.parseFormPost(
+      {
+        'type': 'markForumRead',
+        'timestamp': Api.forum_overview.timestamp,
+      },
+      'forum_overview',
+      $(this),
+      function() {
+        Api.getNextNewPostId(function() {
+          Login.addNewPostLink();
+          Forum.showOverview();
+        });
+      }
+    );
   });
 
   // Actually lay out the page
@@ -234,12 +235,21 @@ Forum.showBoard = function() {
   });
   markReadTd.append(markReadButton);
   markReadButton.click(function() {
-    Forum.parseFormPost({
-      'type': 'markForumBoardRead',
-      'boardId': Api.forum_board.boardId,
-      'timestamp': Api.forum_board.timestamp,
-    }, 'forum_overview', $(this), Forum.showOverview);
-    Api.getNextNewPostId(Login.addNewPostLink);
+    Forum.parseFormPost(
+      {
+        'type': 'markForumBoardRead',
+        'boardId': Api.forum_board.boardId,
+        'timestamp': Api.forum_board.timestamp,
+      },
+      'forum_overview',
+      $(this),
+      function() {
+        Api.getNextNewPostId(function() {
+          Login.addNewPostLink();
+          Forum.showOverview();
+        });
+      }
+    );
   });
 
   // Actually lay out the page
@@ -327,13 +337,22 @@ Forum.showThread = function() {
   });
   markReadTd.append(markReadButton);
   markReadButton.click(function() {
-    Forum.parseFormPost({
-      'type': 'markForumThreadRead',
-      'threadId': Api.forum_thread.threadId,
-      'boardId': Api.forum_thread.boardId,
-      'timestamp': Api.forum_thread.timestamp,
-    }, 'forum_board', $(this), Forum.showBoard);
-    Api.getNextNewPostId(Login.addNewPostLink);
+    Forum.parseFormPost(
+      {
+        'type': 'markForumThreadRead',
+        'threadId': Api.forum_thread.threadId,
+        'boardId': Api.forum_thread.boardId,
+        'timestamp': Api.forum_thread.timestamp,
+      },
+      'forum_board',
+      $(this),
+      function() {
+        Api.getNextNewPostId(function() {
+          Login.addNewPostLink();
+          Forum.showBoard();
+        });
+      }
+    );
   });
 
   // Actually lay out the page
@@ -341,10 +360,6 @@ Forum.showThread = function() {
 };
 
 Forum.arrangePage = function() {
-  // If there is a message from a current or previous invocation of this
-  // page, display it now
-  Env.showStatusMessage();
-
   var pseudoLinks =
     Forum.page.find('.pseudoLink').add(Login.message.find('.pseudoLink'));
   pseudoLinks.each(function() {
@@ -357,8 +372,7 @@ Forum.arrangePage = function() {
     $(this).attr('href', 'forum.html' + Forum.buildUrlHash(state));
   });
 
-  $('#forum_page').empty();
-  $('#forum_page').append(Forum.page);
+  Login.arrangePage(Forum.page);
 
   Forum.scrollTo(Forum.scrollTarget);
 };
@@ -373,7 +387,7 @@ Forum.formLinkToSubPage = function(e) {
   Env.history.pushState(state, 'Button Men Online &mdash; Forum',
     Forum.buildUrlHash(state));
   Env.message = null;
-  Forum.showPage();
+  Forum.showPage(state);
 };
 
 Forum.toggleNewThreadForm = function() {
@@ -439,18 +453,79 @@ Forum.formReplyToThread = function() {
 Forum.quotePost = function() {
   var postRow = $(this).closest('tr');
   var quotedText = postRow.find('td.body').attr('data-rawPost');
+  var quotee = postRow.find('td.attribution div.name a:nth-child(2)').text();
   var replyBox = $('tr.writePost td.body textarea');
 
   var replyText = replyBox.val();
   if (replyText && replyText.slice(-1) != '\n') {
     replyText += '\n';
   }
-  replyText += '[quote]' + quotedText + '[/quote]' + '\n';
+  replyText += '[quote=' + quotee + ']' + quotedText + '[/quote]' + '\n';
 
   replyBox.val(replyText);
   replyBox.prop('scrollTop', replyBox.prop('scrollHeight'));
   replyBox.focus();
   Forum.scrollTo(replyBox.closest('tr'));
+};
+
+Forum.editPost = function() {
+  var postRow = $(this).closest('tr');
+  var oldText = postRow.find('td.body').attr('data-rawPost');
+  var postId = $(this).attr('data-postId');
+
+  var bodyTd = postRow.find('td.body');
+  var editTd = $('<td>', { 'class': 'editBody' });
+
+  editTd.append($('<textarea>', {
+    'text': oldText,
+    'maxlength': Forum.FORUM_BODY_MAX_LENGTH,
+  }));
+
+  var cancelButton = $('<input>', {
+    'type': 'button',
+    'value': 'Cancel',
+  });
+  editTd.append(cancelButton);
+  cancelButton.click(Forum.cancelEditPost);
+
+  var saveButton = $('<input>', {
+    'type': 'button',
+    'value': 'Save edits',
+    'data-postId': postId,
+  });
+  editTd.append(saveButton);
+  saveButton.click(Forum.formSaveEditPost);
+
+  bodyTd.hide();
+  postRow.append(editTd);
+};
+
+Forum.cancelEditPost = function() {
+  var postRow = $(this).closest('tr');
+  postRow.find('td.editBody').remove();
+  postRow.find('td.body').show();
+};
+
+Forum.formSaveEditPost = function() {
+  var body = $(this).parent().find('textarea').val().trim();
+  var postId = $(this).attr('data-postId');
+
+  if (!body) {
+    Env.message = {
+      'type': 'error',
+      'text': 'The post body is required',
+    };
+    Env.showStatusMessage();
+    return;
+  }
+
+  var args = {
+    'type': 'editForumPost',
+    'postId': postId,
+    'body': body,
+  };
+
+  Forum.parseFormPost(args, 'forum_thread', $(this), Forum.showThread);
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -613,8 +688,19 @@ Forum.buildPostRow = function(post) {
     'class': 'splitLeft',
     'text': postDates,
   }));
+  var buttonHolder = $('<div>', { 'class': 'splitRight', });
+  if (post.posterName == Login.player && !post.deleted) {
+    var editButton = $('<input>', {
+      'type': 'button',
+      'value': 'Edit',
+      'data-postId': post.postId,
+    });
+    buttonHolder.append(editButton);
+    editButton.click(Forum.editPost);
+  }
   var quoteButton = $('<input>', { 'type': 'button', 'value': 'Quote' });
-  postFooter.append($('<div>', { 'class': 'splitRight', }).append(quoteButton));
+  buttonHolder.append(quoteButton);
+  postFooter.append(buttonHolder);
   quoteButton.click(Forum.quotePost);
 
   bodyTd.attr('data-rawPost', post.body);
@@ -654,7 +740,26 @@ Forum.buildHelp = function() {
   helpDiv.append($('<div>', {
     'class': 'help',
     'html':
-      '[quote]text[/quote]: <span class="chatQuote">&nbsp;text&nbsp;</span>',
+      '[quote]text[/quote]: ',
+  }));
+  helpDiv.append($('<div>', {
+    'class': 'subHelp',
+    'html':
+      '<span class="chatQuote">' +
+      '<span class="chatQuotee">Quote:</span>' +
+      '&nbsp;text&nbsp;</span>',
+  }));
+  helpDiv.append($('<div>', {
+    'class': 'help',
+    'html':
+      '[quote=Jota]text[/quote]: ',
+  }));
+  helpDiv.append($('<div>', {
+    'class': 'subHelp',
+    'html':
+      '<span class="chatQuote">' +
+      '<span class="chatQuotee">Jota said:</span>' +
+      '&nbsp;text&nbsp;</span>',
   }));
   helpDiv.append($('<div>', {
     'class': 'help',

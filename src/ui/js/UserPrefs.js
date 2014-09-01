@@ -1,9 +1,14 @@
 // namespace for this "module"
 var UserPrefs = {};
 
+UserPrefs.bodyDivId = 'userprefs_page';
+
 UserPrefs.NAME_IRL_MAX_LENGTH = 40;
 UserPrefs.EMAIL_MAX_LENGTH = 254;
+UserPrefs.MIN_IMAGE_SIZE = 80;
+UserPrefs.MAX_IMAGE_SIZE = 200;
 UserPrefs.GENDER_MAX_LENGTH = 100;
+UserPrefs.HOMEPAGE_MAX_LENGTH = 100;
 UserPrefs.COMMENT_MAX_LENGTH = 255;
 UserPrefs.DEFAULT_COLORS = {
   'player_color': '#dd99dd',
@@ -13,42 +18,25 @@ UserPrefs.DEFAULT_COLORS = {
 };
 UserPrefs.ALTERNATE_GENDER_OPTION = 'It\'s complicated';
 
-
 ////////////////////////////////////////////////////////////////////////
 // Action flow through this page:
-// * UserPrefs.showUserPrefsPage() is the landing function.  Always call
+// * UserPrefs.showLoggedInPage() is the landing function.  Always call
 //   this first
 // * UserPrefs.assemblePage(), which calls one of a number of functions
 //   UserPrefs.action<SomeAction>()
 // * each UserPrefs.action<SomeAction>() function must set UserPrefs.page and
-//   UserPrefs.form, then call UserPrefs.arrangePage()
-// * UserPrefs.arrangePage() sets the contents of <div id="userprefs_page">
-//   on the live page
+//   UserPrefs.form, then call Login.arrangePage()
 ////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////
 // GENERIC FUNCTIONS: these do not depend on the action being taken
 
-UserPrefs.showUserPrefsPage = function() {
-
-  // Setup necessary elements for displaying status messages
-  Env.setupEnvStub();
-
-  // Make sure the div element that we will need exists in the page body
-  if ($('#userprefs_page').length === 0) {
-    $('body').append($('<div>', {'id': 'userprefs_page' }));
-  }
-
-  // Only allow logged-in users to view and change preferences
-  if (Login.logged_in) {
-    Api.getUserPrefsData(UserPrefs.assemblePage);
-  } else {
-    Env.message = {
-      'type': 'error',
-      'text': 'Can\'t view/set preferences because you are not logged in',
-    };
-    UserPrefs.actionFailed();
-  }
+UserPrefs.showLoggedInPage = function() {
+  Env.callAsyncInParallel(
+    [
+      { 'func': Api.getButtonData, 'args': [ null ] },
+      Api.getUserPrefsData,
+    ], UserPrefs.assemblePage);
 };
 
 // Assemble and display the userprefs portion of the page
@@ -63,26 +51,11 @@ UserPrefs.assemblePage = function() {
   }
 };
 
-// Actually lay out the page
-UserPrefs.arrangePage = function() {
-
-  // If there is a message from a current or previous invocation of this
-  // page, display it now
-  Env.showStatusMessage();
-
-  $('#userprefs_page').empty();
-  $('#userprefs_page').append(UserPrefs.page);
-
-  if (UserPrefs.form) {
-    $('#userprefs_action_button').click(UserPrefs.form);
-  }
-};
-
 ////////////////////////////////////////////////////////////////////////
 // This section contains one page for each type of next action used for
 // flow through the page being laid out by UserPrefs.js.
 // Each function should start by populating UserPrefs.page and
-// UserPrefs.form and end by invoking UserPrefs.arrangePage();
+// UserPrefs.form and end by invoking Login.arrangePage();
 
 UserPrefs.actionFailed = function() {
 
@@ -94,10 +67,18 @@ UserPrefs.actionFailed = function() {
   // will tell the user what happened
 
   // Lay out the page
-  UserPrefs.arrangePage();
+  Login.arrangePage(UserPrefs.page, UserPrefs.form, '#userprefs_action_button');
 };
 
 UserPrefs.actionSetPrefs = function() {
+  // Include the option to leave them blank
+  var buttons = { '': '' };
+  var buttonSets = { '': '' };
+
+  $.each(Api.button.list, function(button, buttonInfo) {
+    buttonSets[buttonInfo.buttonSet] = buttonInfo.buttonSet;
+    buttons[button] = button;
+  });
 
   // Create empty page and undefined form objects to be filled later
   UserPrefs.page = $('<div>');
@@ -152,19 +133,41 @@ UserPrefs.actionSetPrefs = function() {
       'value': Api.user_prefs.gender,
       'length': UserPrefs.GENDER_MAX_LENGTH,
     },
+    'uses_gravatar': {
+      'text': 'Use gravatar for profile image',
+      'type': 'checkbox',
+      'checked': Api.user_prefs.uses_gravatar,
+    },
+    'image_size': {
+      'text': 'Gravatar image size',
+      'type': 'text',
+      'value': Api.user_prefs.image_size,
+      'after': ' pixels',
+    },
+    'favorite_button': {
+      'text': 'Favorite button',
+      'type': 'select',
+      'value': Api.user_prefs.favorite_button,
+      'source': buttons,
+    },
+    'favorite_buttonset': {
+      'text': 'Favorite button set',
+      'type': 'select',
+      'value': Api.user_prefs.favorite_buttonset,
+      'source': buttonSets,
+    },
+    'homepage': {
+      'text': 'Homepage',
+      'type': 'text',
+      'value': Api.user_prefs.homepage,
+      'length': UserPrefs.HOMEPAGE_MAX_LENGTH,
+    },
     'comment': {
       'text': 'Comment',
       'type': 'textarea',
       'value': Api.user_prefs.comment,
       'length': UserPrefs.COMMENT_MAX_LENGTH,
     },
-    // We can put this back when we have an acceptable implementation of
-    // profile images
-//    'image': {
-//      'text': '',
-//      'type': 'image',
-//      'value': '',
-//    },
   };
 
   var autoBlurb = 'These preferences configure things that the site can do ' +
@@ -184,6 +187,11 @@ UserPrefs.actionSetPrefs = function() {
       'text': 'Redirect to new forum posts when in Monitor mode',
       'type': 'checkbox',
       'checked': Api.user_prefs.monitor_redirects_to_forum,
+    },
+    'automatically_monitor': {
+      'text': 'Automatically Monitor after "Next game" runs out',
+      'type': 'checkbox',
+      'checked': Api.user_prefs.automatically_monitor,
     },
   };
 
@@ -277,7 +285,7 @@ UserPrefs.actionSetPrefs = function() {
   UserPrefs.appendToPreferencesTable(prefsTable, 'Browser Preferences',
     browserBlurb, browserPrefs);
 
-  // Gender dynamic inputs
+  // Gender and gravatar inputs are dynamic
   var genderText = prefsTable.find('#userprefs_gender_text');
   var genderSelect = prefsTable.find('#userprefs_gender_select');
   if (Api.user_prefs.gender === '' || Api.user_prefs.gender == 'Male' ||
@@ -298,6 +306,21 @@ UserPrefs.actionSetPrefs = function() {
     }
   });
 
+  var gravatarCheck = prefsTable.find('#userprefs_uses_gravatar');
+  var imageSizeText = prefsTable.find('#userprefs_image_size');
+  if (!Api.user_prefs.uses_gravatar) {
+    imageSizeText.closest('tr').hide();
+    imageSizeText.val('');
+  }
+  gravatarCheck.change(function() {
+    if (gravatarCheck.is(':checked')) {
+      imageSizeText.closest('tr').show();
+    } else {
+      imageSizeText.closest('tr').hide();
+      genderText.val('');
+    }
+  });
+
   // Form submission button
   prefsform.append($('<button>', {
     'id': 'userprefs_action_button',
@@ -311,7 +334,7 @@ UserPrefs.actionSetPrefs = function() {
   UserPrefs.form = UserPrefs.formSetPrefs;
 
   // Lay out the page
-  UserPrefs.arrangePage();
+  Login.arrangePage(UserPrefs.page, UserPrefs.form, '#userprefs_action_button');
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -329,12 +352,19 @@ UserPrefs.formSetPrefs = function() {
   if (!gender) {
     gender = $('#userprefs_gender_select').val();
   }
+  var uses_gravatar = $('#userprefs_uses_gravatar').prop('checked');
+  var favorite_button = $('#userprefs_favorite_button').val();
+  var favorite_buttonset = $('#userprefs_favorite_buttonset').val();
+  var image_size = $('#userprefs_image_size').val();
+  var homepage = $('#userprefs_homepage').val();
   var comment = $('#userprefs_comment').val();
   var autopass = $('#userprefs_autopass').prop('checked');
   var monitor_redirects_to_game =
     $('#userprefs_monitor_redirects_to_game').prop('checked');
   var monitor_redirects_to_forum =
     $('#userprefs_monitor_redirects_to_forum').prop('checked');
+  var automatically_monitor =
+    $('#userprefs_automatically_monitor').prop('checked');
   var player_color = $('#userprefs_player_color').spectrum('get');
   var opponent_color = $('#userprefs_opponent_color').spectrum('get');
   var neutral_color_a = $('#userprefs_neutral_color_a').spectrum('get');
@@ -353,6 +383,21 @@ UserPrefs.formSetPrefs = function() {
     (dob_month === 0 && dob_day !== 0)) {
     validationErrors += 'Birthday is incomplete. ';
   }
+
+  if (image_size !== '') {
+    if (isNaN(image_size)) {
+      validationErrors += 'Gravatar size must be a number of pixels. ';
+    } else {
+      image_size = parseInt(image_size, 10);
+      if (image_size < UserPrefs.MIN_IMAGE_SIZE ||
+          image_size > UserPrefs.MAX_IMAGE_SIZE) {
+        validationErrors +=
+          'Gravatar size must be between ' + UserPrefs.MIN_IMAGE_SIZE +
+          ' and ' + UserPrefs.MAX_IMAGE_SIZE + ' pixels. ';
+      }
+    }
+  }
+
   if (new_password != confirm_new_password) {
     validationErrors += 'New passwords do not match. ';
   }
@@ -392,6 +437,18 @@ UserPrefs.formSetPrefs = function() {
     new_email = undefined;
   }
 
+  if (!favorite_button) {
+    favorite_button = undefined;
+  }
+
+  if (!favorite_buttonset) {
+    favorite_buttonset = undefined;
+  }
+
+  if (!image_size) {
+    image_size = undefined;
+  }
+
   Api.apiFormPost(
     {
       'type': 'savePlayerInfo',
@@ -400,10 +457,16 @@ UserPrefs.formSetPrefs = function() {
       'dob_month': dob_month,
       'dob_day': dob_day,
       'gender': gender,
+      'favorite_button': favorite_button,
+      'favorite_buttonset': favorite_buttonset,
+      'image_size': image_size,
+      'uses_gravatar': uses_gravatar,
+      'homepage': homepage,
       'comment': comment,
       'autopass': autopass,
       'monitor_redirects_to_game': monitor_redirects_to_game,
       'monitor_redirects_to_forum': monitor_redirects_to_forum,
+      'automatically_monitor': automatically_monitor,
       'player_color': player_color.toHexString(),
       'opponent_color': opponent_color.toHexString(),
       'neutral_color_a': neutral_color_a.toHexString(),
@@ -416,9 +479,9 @@ UserPrefs.formSetPrefs = function() {
       'ok': { 'type': 'fixed', 'text': 'User details set successfully.', },
       'notok': { 'type': 'server', }
     },
-    'userprefs_action_button',
-    UserPrefs.showUserPrefsPage,
-    UserPrefs.showUserPrefsPage
+    '#userprefs_action_button',
+    UserPrefs.showLoggedInPage,
+    UserPrefs.showLoggedInPage
   );
 };
 
@@ -556,6 +619,10 @@ UserPrefs.appendToPreferencesTable = function(prefsTable, sectionTitle,
       }));
     }
     entryRow.append(entryInput);
+
+    if (entryInfo.after) {
+      entryInput.append(entryInfo.after);
+    }
     prefsTable.append(entryRow);
   });
 
@@ -563,4 +630,3 @@ UserPrefs.appendToPreferencesTable = function(prefsTable, sectionTitle,
   prefsTable.append(spacerRow);
   spacerRow.append($('<td>', { 'colspan': '2', }).append('&nbsp;'));
 };
-

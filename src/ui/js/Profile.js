@@ -1,28 +1,19 @@
 // namespace for this "module"
 var Profile = {};
 
+Profile.bodyDivId = 'profile_page';
+
 ////////////////////////////////////////////////////////////////////////
 // Action flow through this page:
-// * Profile.showProfilePage() is the landing function. Always call
+// * Profile.showLoggedInPage() is the landing function. Always call
 // this first. It sets up #profile_page and calls Profile.getProfile()
 // * Profile.getProfile() calls the API, setting Api.profile_info. It calls
 //   Profile.showPage()
 // * Profile.showPage() uses the data returned by the API to build
-//   the contents of the page as Profile.page and calls Profile.arrangePage()
-// * Profile.arrangePage() sets the contents of <div id="profile_page"> on the
-//   live page
+//   the contents of the page as Profile.page and calls Login.arrangePage()
 ////////////////////////////////////////////////////////////////////////
 
-Profile.showProfilePage = function() {
-
-  // Setup necessary elements for displaying status messages
-  Env.setupEnvStub();
-
-  // Make sure the div element that we will need exists in the page body
-  if ($('#profile_page').length === 0) {
-    $('body').append($('<div>', {'id': 'profile_page', }));
-  }
-
+Profile.showLoggedInPage = function() {
   // Get all needed information, then display Profile page
   Profile.getProfile(Profile.showPage);
 };
@@ -30,22 +21,13 @@ Profile.showProfilePage = function() {
 Profile.getProfile = function(callback) {
   var playerName = Env.getParameterByName('player');
 
-  if (Login.logged_in) {
-    Api.loadProfileInfo(playerName, callback);
-  } else {
-    return callback();
-  }
+  Api.loadProfileInfo(playerName, callback);
 };
 
 Profile.showPage = function() {
   Profile.page = $('<div>');
 
-  if (!Login.logged_in) {
-    Env.message = {
-      'type': 'error',
-      'text': 'Can\'t view player profile because you are not logged in',
-    };
-  } else if (Api.profile_info.load_status != 'ok') {
+  if (Api.profile_info.load_status != 'ok') {
     if (Env.message === undefined || Env.message === null) {
       Env.message = {
         'type': 'error',
@@ -57,16 +39,7 @@ Profile.showPage = function() {
   }
 
   // Actually layout the page
-  Profile.arrangePage();
-};
-
-Profile.arrangePage = function() {
-  // If there is a message from a current or previous invocation of this
-  // page, display it now
-  Env.showStatusMessage();
-
-  $('#profile_page').empty();
-  $('#profile_page').append(Profile.page);
+  Login.arrangePage(Profile.page);
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -89,13 +62,26 @@ Profile.buildProfileTable = function() {
       Api.profile_info.dob_day;
   }
 
-  var challengeLink = null;
+  var challengeLinkHolder = null;
   if (Login.player != Api.profile_info.name_ingame) {
-    challengeLink = $('<a>', {
-      'href': 'create_game.html?opponent=' +
+    challengeLinkHolder = $('<span>');
+    challengeLinkHolder.append($('<a>', {
+      'href':
+        'create_game.html?opponent=' +
         encodeURIComponent(Api.profile_info.name_ingame),
       'text': 'Create game!',
-    });
+    }));
+    if (Api.profile_info.favorite_button) {
+      challengeLinkHolder.append(' ');
+      challengeLinkHolder.append($('<a>', {
+        'href':
+          'create_game.html?opponent=' +
+          encodeURIComponent(Api.profile_info.name_ingame) +
+          '&opponentButton=' +
+          encodeURIComponent(Api.profile_info.favorite_button),
+        'text': 'With ' + Api.profile_info.favorite_button + '!',
+      }));
+    }
   }
 
   var record = Api.profile_info.n_games_won + '/' +
@@ -115,6 +101,41 @@ Profile.buildProfileTable = function() {
       Env.ui_root + 'history.html#!playerNameA=' +
       Api.profile_info.name_ingame + '&status=COMPLETE',
   }));
+
+  var favoriteButtonLink = null;
+  if (Api.profile_info.favorite_button) {
+    favoriteButtonLink = Env.buildButtonLink(Api.profile_info.favorite_button);
+  }
+  var favoriteButtonSetLink = null;
+  if (Api.profile_info.favorite_buttonset) {
+    favoriteButtonSetLink =
+      Env.buildButtonSetLink(Api.profile_info.favorite_buttonset);
+  }
+
+  var commentHolder = null;
+  if (Api.profile_info.comment) {
+    commentHolder = $('<span>');
+    var cookedComment = Env.prepareRawTextForDisplay(Api.profile_info.comment);
+    commentHolder.append(cookedComment);
+  }
+
+  var homepageLink = null;
+  if (Api.profile_info.homepage) {
+    var homepageUrl = Env.validateUrl(Api.profile_info.homepage);
+    if (homepageUrl) {
+      homepageLink = $('<a>', {
+        'text': homepageUrl,
+        'href': homepageUrl,
+        'target': '_blank',
+      });
+    } else {
+      homepageLink = $('<a>', {
+        'text': 'INVALID URL',
+        'href': 'javascript:alert("Homepage URL was invalid")',
+        'target': '_blank',
+      });
+    }
+  }
 
   var solipsismAlternatives = [
     'solipsism overflow',
@@ -172,14 +193,28 @@ Profile.buildProfileTable = function() {
     true));
   tbody.append(Profile.buildProfileTableRow('Games', gamesLinksHolder, '',
     true));
+  tbody.append(Profile.buildProfileTableRow('Favorite button',
+    favoriteButtonLink, 'undecided', true));
+  tbody.append(Profile.buildProfileTableRow('Favorite button set',
+    favoriteButtonSetLink, 'unselected', true));
   tbody.append(Profile.buildProfileTableRow(
     'Challenge ' + Api.profile_info.name_ingame + ' to a game',
-    challengeLink, solipsismNotification, true));
+    challengeLinkHolder, solipsismNotification, false));
+  tbody.append(Profile.buildProfileTableRow('Homepage',
+    homepageLink, 'homeless', false));
   tbody.append(Profile.buildProfileTableRow('Comment',
-    Api.profile_info.comment, 'none', false));
+    commentHolder, 'none', false));
 
   if (!Env.getCookieNoImages()) {
-    var url = Env.ui_root + 'images/no-image.png';
+    var url;
+    if (Api.profile_info.uses_gravatar) {
+      url = 'http://www.gravatar.com/avatar/' + Api.profile_info.email_hash;
+      if (Api.profile_info.image_size) {
+        url += '?s=' + Api.profile_info.image_size;
+      }
+    } else {
+      url = Env.ui_root + 'images/no-image.png';
+    }
     var image = $('<img>', {
       'src': url,
       'class': 'profileImage',
@@ -187,7 +222,7 @@ Profile.buildProfileTable = function() {
 
     var partialTds = table.find('td.partialValue');
 
-    var imageTd = $('<td>', { 'class': 'partialValue', 'rowspan': '7', });
+    var imageTd = $('<td>', { 'class': 'partialValue', 'rowspan': '9', });
     partialTds.first().parent().append(imageTd);
     imageTd.append(image);
   }
@@ -222,3 +257,4 @@ Profile.buildProfileTableRow = function(
   }
   return tr;
 };
+

@@ -6,6 +6,8 @@
   "playerWithInitiativeIdx": null,
   "roundNumber": 2,
   "maxWins": 3,
+  "description": "",
+  "previousGameId": null,
   "validAttackTypeArray": [],
   "gameSkillsInfo": {
     "Reserve": {
@@ -46,6 +48,7 @@
       "sideScore": null,
       "gameScoreArray": {"W": 1, "L": 0, "D": 0},
       "lastActionTime": 0,
+      "hasDismissedGame": false,
       "canStillWin": null,
       "playerColor": "#dd99dd"
     },
@@ -77,10 +80,10 @@
       "sideScore": null,
       "gameScoreArray": {"W": 0, "L": 1, "D": 0},
       "lastActionTime": 0,
+      "hasDismissedGame": false,
       "canStillWin": null,
       "playerColor": "#ddffdd"
     }
   ],
-  "timestamp": 1403223970,
-  "pendingGameCount": 0
+  "timestamp": 1403223970
 }
