@@ -4,6 +4,7 @@ module("Newuser", {
 
     // Create the newuser_page div so functions have something to modify
     if (document.getElementById('newuser_page') == null) {
+      $('body').append($('<div>', {'id': 'env_message', }));
       $('body').append($('<div>', {'id': 'newuser_page', }));
     }
 
@@ -27,7 +28,6 @@ module("Newuser", {
 
     // Page elements
     $('#newuser_page').remove();
-    $('#newuser_page').empty();
 
     BMTestUtils.deleteEnvMessage();
 
@@ -80,8 +80,8 @@ test("test_Newuser.formCreateUser", function(assert) {
   $('#newuser_username').val('tester5');
   $('#newuser_password').val('testpass');
   $('#newuser_password_confirm').val('testpass');
-  $('#newuser_email').val('tester5@example.com');
-  $('#newuser_email_confirm').val('tester5@example.com');
+  $('#newuser_email').val('tester5.test@example.com');
+  $('#newuser_email_confirm').val('tester5.test@example.com');
   $.ajaxSetup({ async: false });
   $('#newuser_action_button').trigger('click');
   $.ajaxSetup({ async: true });

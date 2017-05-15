@@ -4,6 +4,7 @@ var Forum = {
 };
 
 Forum.bodyDivId = 'forum_page';
+Forum.pageTitle = 'Forum &mdash; Button Men Online';
 
 Forum.OPEN_STAR = '&#9734;';
 Forum.SOLID_STAR = '&#9733;';
@@ -63,8 +64,7 @@ Forum.showLoggedInPage = function() {
     'threadId': Env.getParameterByName('threadId'),
     'postId': Env.getParameterByName('postId'),
   };
-  Env.history.replaceState(state, 'Button Men Online &mdash; Forum',
-    Env.window.location.hash);
+  Env.history.replaceState(state, Forum.pageTitle, Env.window.location.hash);
   Forum.showPage(state);
 };
 
@@ -77,6 +77,16 @@ Forum.showPage = function(state) {
   if (state.originalEvent !== undefined) {
     state = state.originalEvent.state;
   }
+
+  // If no usable state has been found yet, regenerate it from the URL
+  if ((state === undefined) || (state === null)) {
+    state = {
+      'boardId': Env.getParameterByName('boardId'),
+      'threadId': Env.getParameterByName('threadId'),
+      'postId': Env.getParameterByName('postId'),
+    };
+  }
+
   // Display the appropriate version of the page depending on the current state
   if (state.threadId) {
     Api.loadForumThread(state.threadId, state.postId, Forum.showThread);
@@ -92,6 +102,8 @@ Forum.showOverview = function() {
   if (!Api.verifyApiData('forum_overview', Forum.arrangePage)) {
     return;
   }
+
+  $('title').html(Forum.pageTitle);
 
   var table = $('<table>', { 'class': 'boards' });
   Forum.page.append(table);
@@ -116,12 +128,12 @@ Forum.showOverview = function() {
 
   var markReadTd = $('<td>', { 'class': 'markRead', 'colspan': 2, });
   table.append($('<tr>').append(markReadTd));
-  var markReadButton = $('<input>', {
+  var markAllBoardsReadButton = $('<input>', {
     'type': 'button',
     'value': 'Mark all boards as read',
   });
-  markReadTd.append(markReadButton);
-  markReadButton.click(function() {
+  markReadTd.append(markAllBoardsReadButton);
+  markAllBoardsReadButton.click(function() {
     Forum.parseFormPost(
       {
         'type': 'markForumRead',
@@ -147,6 +159,9 @@ Forum.showBoard = function() {
   if (!Api.verifyApiData('forum_board', Forum.arrangePage)) {
     return;
   }
+
+  $('title').html(Api.forum_board.boardName +
+    ' &mdash; ' + Forum.pageTitle);
 
   var table = $('<table>', {
     'class': 'threads'
@@ -198,18 +213,18 @@ Forum.showBoard = function() {
   contentTd.append($('<textarea>', {
     'maxlength': Forum.FORUM_BODY_MAX_LENGTH
   }));
-  var cancelButton = $('<input>', {
-    'type': 'button',
-    'value': 'Cancel',
-  });
-  contentTd.append(cancelButton);
-  cancelButton.click(Forum.toggleNewThreadForm);
   var replyButton = $('<input>', {
     'type': 'button',
     'value': 'Post new thread',
   });
   contentTd.append(replyButton);
   replyButton.click(Forum.formPostNewThread);
+  var cancelButton = $('<input>', {
+    'type': 'button',
+    'value': 'Cancel',
+  });
+  contentTd.append(cancelButton);
+  cancelButton.click(Forum.toggleNewThreadForm);
 
   var notesTd = $('<td>', {
     'class': 'attribution',
@@ -229,12 +244,13 @@ Forum.showBoard = function() {
 
   var markReadTd = $('<td>', { 'class': 'markRead', 'colspan': 2, });
   table.append($('<tr>').append(markReadTd));
-  var markReadButton = $('<input>', {
+  var markBoardReadButton = $('<input>', {
+    'id': 'markBoardReadButton',
     'type': 'button',
     'value': 'Mark board as read',
   });
-  markReadTd.append(markReadButton);
-  markReadButton.click(function() {
+  markReadTd.append(markBoardReadButton);
+  markBoardReadButton.click(function() {
     Forum.parseFormPost(
       {
         'type': 'markForumBoardRead',
@@ -261,6 +277,12 @@ Forum.showThread = function() {
   if (!Api.verifyApiData('forum_thread', Forum.arrangePage)) {
     return;
   }
+
+  // Don't display special characters (such as "&auml;") in page title
+  var tempDiv = $('<div>', { 'text': Api.forum_thread.threadTitle});
+  var pageTitle = tempDiv.html();
+
+  $('title').html(pageTitle + ' &mdash; ' + Forum.pageTitle);
 
   var table = $('<table>', { 'class': 'posts' });
   Forum.page.append(table);
@@ -318,25 +340,43 @@ Forum.showThread = function() {
 
   var replyBodyTd = $('<td>', { 'class': 'body' });
   replyTr.append(replyBodyTd);
-  replyBodyTd.append($('<textarea>', {
+  var replyBodyTextArea = $('<textarea>', {
     'placeholder': 'Reply to thread...',
     'maxlength': Forum.FORUM_BODY_MAX_LENGTH,
-  }));
+  });
+  replyBodyTextArea.on('change keyup paste', function() {
+    if ('' === $(this).val().trim()) {
+      if ('disabled' == $('#markThreadReadButton').attr('disabled')) {
+        $('#markThreadReadButton').removeAttr('disabled');
+        $('#markThreadReadButton').removeAttr('title');
+      }
+    } else {
+      if ('disabled' != $('#markThreadReadButton').attr('disabled')) {
+        $('#markThreadReadButton').attr('disabled', 'disabled');
+        $('#markThreadReadButton').attr('title',
+          'Disabled because there is text in the reply box');
+      }
+    }
+  });
+  replyBodyTd.append(replyBodyTextArea);
+
   var replyButton = $('<input>', {
     'type': 'button',
     'value': 'Post reply',
   });
   replyBodyTd.append(replyButton);
+
   replyButton.click(Forum.formReplyToThread);
 
   var markReadTd = $('<td>', { 'class': 'markRead', 'colspan': 2, });
   table.append($('<tr>').append(markReadTd));
-  var markReadButton = $('<input>', {
+  var markThreadReadButton = $('<input>', {
+    'id': 'markThreadReadButton',
     'type': 'button',
     'value': 'Mark thread as read',
   });
-  markReadTd.append(markReadButton);
-  markReadButton.click(function() {
+  markReadTd.append(markThreadReadButton);
+  markThreadReadButton.click(function() {
     Forum.parseFormPost(
       {
         'type': 'markForumThreadRead',
@@ -382,10 +422,16 @@ Forum.arrangePage = function() {
 // These are events that are triggered by user actions
 
 Forum.formLinkToSubPage = function(e) {
+  // Don't let confused browsers execute click events for things that 
+  // aren't proper clicks!
+  var button = (e.which || e.button);
+  if (button > 1 || e.ctrlKey || e.metaKey || e.shiftKey) {
+    return;
+  }
+
   e.preventDefault();
   var state = Forum.readStateFromElement(this);
-  Env.history.pushState(state, 'Button Men Online &mdash; Forum',
-    Forum.buildUrlHash(state));
+  Env.history.pushState(state, Forum.pageTitle, Forum.buildUrlHash(state));
   Env.message = null;
   Forum.showPage(state);
 };
@@ -394,6 +440,7 @@ Forum.toggleNewThreadForm = function() {
   // Using visibility rather than display: hidden so we don't reflow the table
   if ($('#newThreadButton').css('visibility') == 'visible') {
     $('#newThreadButton').css('visibility', 'hidden');
+    $('#markBoardReadButton').css('visibility', 'hidden');
     $('tr.writePost textarea').val('');
     $('tr.writePost input.title').val('');
     $('tr.thread').hide();
@@ -403,6 +450,7 @@ Forum.toggleNewThreadForm = function() {
     $('tr.writePost').hide();
     $('tr.thread').show();
     $('#newThreadButton').css('visibility', 'visible');
+    $('#markBoardReadButton').css('visibility', 'visible');
     Env.message = null;
     Env.showStatusMessage();
   }
@@ -469,6 +517,9 @@ Forum.quotePost = function() {
 };
 
 Forum.editPost = function() {
+  $('#markThreadReadButton').attr('disabled', 'disabled');
+  $('#markThreadReadButton').attr('title', 'Disabled when editing a reply');
+
   var postRow = $(this).closest('tr');
   var oldText = postRow.find('td.body').attr('data-rawPost');
   var postId = $(this).attr('data-postId');
@@ -481,12 +532,6 @@ Forum.editPost = function() {
     'maxlength': Forum.FORUM_BODY_MAX_LENGTH,
   }));
 
-  var cancelButton = $('<input>', {
-    'type': 'button',
-    'value': 'Cancel',
-  });
-  editTd.append(cancelButton);
-  cancelButton.click(Forum.cancelEditPost);
 
   var saveButton = $('<input>', {
     'type': 'button',
@@ -496,11 +541,23 @@ Forum.editPost = function() {
   editTd.append(saveButton);
   saveButton.click(Forum.formSaveEditPost);
 
+  var cancelButton = $('<input>', {
+    'type': 'button',
+    'value': 'Cancel',
+  });
+  editTd.append(cancelButton);
+  cancelButton.click(Forum.cancelEditPost);
+
   bodyTd.hide();
   postRow.append(editTd);
 };
 
 Forum.cancelEditPost = function() {
+  if ('disabled' == $('#markThreadReadButton').attr('disabled')) {
+    $('#markThreadReadButton').removeAttr('disabled');
+    $('#markThreadReadButton').removeAttr('title');
+  }
+
   var postRow = $(this).closest('tr');
   postRow.find('td.editBody').remove();
   postRow.find('td.body').show();
@@ -656,7 +713,7 @@ Forum.buildPostRow = function(post) {
   postAnchor.click(function(e) {
     e.preventDefault();
     var state = Forum.readStateFromElement(this);
-    Env.history.pushState(state, 'Button Men Online &mdash; Forum',
+    Env.history.pushState(state, 'Forum &mdash; Button Men Online',
       Forum.buildUrlHash(state));
     $('.postAnchor').html(Forum.OPEN_STAR);
     $(this).html(Forum.SOLID_STAR);
@@ -768,6 +825,26 @@ Forum.buildHelp = function() {
   helpDiv.append($('<div>', {
     'class': 'help',
     'html': '[player=Jota]: <a href="profile.html?player=Jota">Jota</a>',
+  }));
+  helpDiv.append($('<div>', {
+    'class': 'help',
+    'html': '[button=Avis]: <a href="buttons.html?button=Avis">Avis</a>',
+  }));
+  helpDiv.append($('<div>', {
+    'class': 'help',
+    'html': '[set=Soldiers]: <a href="buttons.html?set=Soldiers">Soldiers</a>',
+  }));
+  helpDiv.append($('<div>', {
+    'class': 'help',
+    'html': '[wiki=UBFC]: ' +
+            '<a href="http://buttonweavers.wikia.com/wiki/UBFC">' +
+            'Wiki: UBFC</a>',
+  }));
+  helpDiv.append($('<div>', {
+    'class': 'help',
+    'html': '[issue=1841]: <a href=' +
+            '"https://github.com/buttonmen-dev/buttonmen/issues/1841"' +
+            '>Issue 1841</a>',
   }));
   helpDiv.append($('<text>', {
     'text': 'For actual brackets: ',

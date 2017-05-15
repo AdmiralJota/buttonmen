@@ -6,6 +6,7 @@ module("History", {
 
     // Create the history_page div so functions have something to modify
     if (document.getElementById('history_page') == null) {
+      $('body').append($('<div>', {'id': 'env_message', }));
       $('body').append($('<div>', {'id': 'history_page', }));
     }
   },
@@ -36,9 +37,7 @@ module("History", {
 
     // Page elements
     $('#history_page').remove();
-    $('#history_page').empty();
     $('#ui-datepicker-div').remove();
-    $('#ui-datepicker-div').empty();
 
     BMTestUtils.deleteEnvMessage();
     BMTestUtils.cleanupFakeLogin();
@@ -72,18 +71,18 @@ test("test_History.showLoggedInPage", function(assert) {
   History.showPage = function() {
     assert.ok(getFiltersCalled, "History.getFilters is called before History.showPage");
     assert.ok(getHistoryCalled, "History.getHistory is called before History.showPage");
-  }
+  };
   History.getFilters = function(callback) {
     getFiltersCalled = true;
     assert.ok(true, "History.getFilters is called");
     callback();
-  }
+  };
   History.getHistory = function(callback) {
     getHistoryCalled = true;
     assert.equal(callback, History.showPage,
       "History.getHistory is called with History.showPage as an argument");
     callback();
-  }
+  };
 
   History.showLoggedInPage();
 
@@ -212,13 +211,13 @@ test("test_History.buildSearchButtonDiv", function(assert) {
   }));
   var div = History.buildSearchButtonDiv();
   var button = div.find('#searchButton');
-  assert.ok(button.length > 0, "Search button is created")
+  assert.ok(button.length > 0, "Search button is created");
 });
 
 test("test_History.buildHiddenFields", function(assert) {
   var div = History.buildHiddenFields();
   var button = div.find('#parameter_page');
-  assert.ok(button.length > 0, "Page number field is created")
+  assert.ok(button.length > 0, "Page number field is created");
 });
 
 test("test_History.buildResultsTableHeader", function(assert) {
@@ -247,11 +246,93 @@ test("test_History.buildResultsTableBody", function(assert) {
 
   History.getHistory(function() {
     var tbody = History.buildResultsTableBody();
-    var avisCell = tbody.find('td:contains("Avis")');
+    var avisCell = tbody.find('td:contains("haruspex")');
     assert.ok(avisCell.length > 0, 'Table body contains game information.');
 
     start();
   });
+});
+
+test("test_History.scoreCol", function(assert) {
+  var game;
+  var column;
+
+  // james: there needs to be a test for new games when this is supported
+
+  // test normal active games
+  game = {
+    'status' : 'ACTIVE',
+    'roundsWonA' : 1,
+    'roundsWonB' : 2,
+    'roundsDrawn' : 4,
+    'targetWins' : 5,
+    'colorA' : '#aa0000',
+    'colorB' : '#00bb00',
+  };
+
+  column = History.scoreCol(game);
+  assert.ok(column.is('td'), 'active game score column has the correct type');
+  assert.equal(
+    '1/2/4 (5)',
+    column.text(),
+    'active game score column has the correct text'
+  );
+  assert.equal(
+    'rgb(255, 255, 255)',
+    column.css('background-color'),
+    'active game score column has the correct color'
+  );
+
+  // test completed games
+  game = {
+    'status' : 'COMPLETED',
+    'roundsWonA' : 1,
+    'roundsWonB' : 3,
+    'roundsDrawn' : 2,
+    'targetWins' : 3,
+    'colorA' : '#ff0000',
+    'colorB' : '#00ff00',
+  };
+
+  column = History.scoreCol(game);
+  assert.ok(
+    column.is('td'),
+    'completed game score column has the correct type'
+  );
+  assert.equal(
+    '1/3/2 (3)',
+    column.text(),
+    'completed game score column has the correct text'
+  );
+  assert.equal(
+    'rgb(0, 255, 0)',
+    column.css('background-color'),
+    'completed game score column has the correct color'
+  );
+
+  // test cancelled games
+  game = {
+    'status' : 'CANCELLED',
+    'roundsWonA' : 0,
+    'roundsWonB' : 0,
+    'roundsDrawn' : 0,
+    'targetWins' : 4,
+    'colorA' : '#aaaaaa',
+    'colorB' : '#bbbbbb',
+  };
+
+  column = History.scoreCol(game);
+  assert.ok(column.is('td'), 'cancelled game score column has the correct type');
+  assert.equal(
+    '–/–/– (4)',
+    column.text(),
+    'cancelled game score column has the correct text'
+  );
+  assert.equal(
+    'rgb(255, 255, 255)',
+    column.css('background-color'),
+    'cancelled game score column has the correct color'
+  );
 });
 
 test("test_History.buildResultsTableFooter", function(assert) {

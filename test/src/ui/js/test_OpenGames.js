@@ -6,6 +6,7 @@ module("OpenGames", {
 
     // Create the opengames_page div so functions have something to modify
     if (document.getElementById('opengames_page') == null) {
+      $('body').append($('<div>', {'id': 'env_message', }));
       $('body').append($('<div>', {'id': 'opengames_page', }));
     }
   },
@@ -26,7 +27,6 @@ module("OpenGames", {
 
     // Page elements
     $('#opengames_page').remove();
-    $('#opengames_page').empty();
 
     BMTestUtils.deleteEnvMessage();
     BMTestUtils.cleanupFakeLogin();
@@ -57,13 +57,13 @@ test("test_OpenGames.showLoggedInPage", function(assert) {
   var getOpenGamesCalled = false;
   OpenGames.showPage = function() {
     assert.ok(getOpenGamesCalled, "OpenGames.getOpenGames is called before OpenGames.showPage");
-  }
+  };
   OpenGames.getOpenGames = function(callback) {
     getOpenGamesCalled = true;
     assert.equal(callback, OpenGames.showPage,
       "OpenGames.getOpenGames is called with OpenGames.showPage as an argument");
     callback();
-  }
+  };
 
   OpenGames.showLoggedInPage();
   var item = document.getElementById('opengames_page');
@@ -108,6 +108,14 @@ test("test_OpenGames.buildGameTable", function(assert) {
       'recipe': 'Apples: (8) (8) (2/12) (8/16) (20/24)',
       'greyed': false,
     },
+    'Bauer': {
+      'recipe': 'Bauer: (8) (10) (12) (20) (X)',
+      'greyed': false,
+    },
+    'Stark': {
+      'recipe': 'Stark: (4) (6) (8) (X) (X)',
+      'greyed': false,
+    },
     'Von Pinn': {
       'recipe': 'Von Pinn: (4) p(6,6) (10) (20) (W)',
       'greyed': false,
@@ -122,7 +130,7 @@ test("test_OpenGames.buildGameTable", function(assert) {
 });
 
 test("test_OpenGames.joinOpenGame", function(assert) {
-  var gameId = 21;
+  var gameId = 4400;
 
   var gameRow = $('<tr>');
   var gameActionTd = $('<td>');

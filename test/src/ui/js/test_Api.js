@@ -14,8 +14,10 @@ module("Api", {
     delete Api.button;
     delete Api.buttonSet;
     delete Api.player;
+    delete Api.new_games;
     delete Api.active_games;
     delete Api.completed_games;
+    delete Api.cancelled_games;
     delete Api.user_prefs;
     delete Api.game;
     delete Api.gameNavigation;
@@ -37,7 +39,6 @@ module("Api", {
 
     // Page elements (for test use only)
     $('#api_page').remove();
-    $('#api_page').empty();
 
     // Fail if any other elements were added or removed
     BMTestUtils.ApiPost = BMTestUtils.getAllElements();
@@ -60,7 +61,8 @@ test("test_Api.parseApiPost_automatedApiCall", function(assert) {
   Api.automatedApiCall = true;
 
   // Api.getGameData calls Api.parseApiPost
-  Api.getGameData(1, 10, function() {
+  var gameId = BMTestUtils.testGameId('frasquito_wiseman_specifydice');
+  Api.getGameData(gameId, 10, function() {
     assert.equal(Api.game.load_status, 'ok',
       'getGameData should be a valid automated API call');
     start();
@@ -116,7 +118,7 @@ test("test_Api.getButtonData", function(assert) {
     assert.deepEqual(
       Api.button.list["Avis"],
       {
-        'buttonId': 264,
+        'buttonId': 256,
         'buttonName': 'Avis',
         'hasUnimplementedSkill': false,
         'recipe': '(4) (4) (10) (12) (X)',
@@ -292,21 +294,26 @@ test("test_Api.parsePlayerData_failure", function(assert) {
   assert.equal(retval, false, "Api.parsePlayerData({}) returns false");
 });
 
+test("test_Api.getNewGamesData", function(assert) {
+  stop();
+  Api.getNewGamesData(function() {
+    assert.equal(Api.new_games.load_status, 'ok',
+         'Successfully loaded new games data');
+    assert.equal(Api.new_games.nGames, 0, 'Got expected number of new games');
+    start();
+  });
+});
+
 test("test_Api.getActiveGamesData", function(assert) {
   stop();
   Api.getActiveGamesData(function() {
     assert.equal(Api.active_games.load_status, 'ok',
          'Successfully loaded active games data');
-    assert.equal(Api.active_games.nGames, 15, 'Got expected number of active games');
-    start();
-  });
-});
-
-test("test_Api.parseActiveGamesData", function(assert) {
-  stop();
-  Api.getActiveGamesData(function() {
-    assert.equal(Api.active_games.games.awaitingPlayer.length, 9,
-          "expected number of games parsed as waiting for the active player");
+    assert.ok(Api.active_games.nGames > 0, 'Parsed some active games');
+    assert.ok(Api.active_games.games.awaitingPlayer.length > 0,
+          "Parsed some games as waiting for the active player");
+    assert.ok(Api.active_games.nGames > Api.active_games.games.awaitingPlayer.length,
+          "Parsed more active games than games waiting for the active player");
     start();
   });
 });
@@ -316,16 +323,21 @@ test("test_Api.getCompletedGamesData", function(assert) {
   Api.getCompletedGamesData(function() {
     assert.equal(Api.completed_games.load_status, 'ok',
          'Successfully loaded completed games data');
-    assert.equal(Api.completed_games.nGames, 1, 'Got expected number of completed games');
+    assert.ok(Api.completed_games.nGames > 0, 'Parsed some completed games');
+    assert.equal(Api.completed_games.games[0]['status'], 'COMPLETE',
+          "Completed game has expected status");
     start();
   });
 });
 
-test("test_Api.parseCompletedGamesData", function(assert) {
+test("test_Api.getCancelledGamesData", function(assert) {
   stop();
-  Api.getCompletedGamesData(function() {
-    assert.equal(Api.completed_games.games[0].gameId, 5,
-          "expected completed game ID exists");
+  Api.getCancelledGamesData(function() {
+    assert.equal(Api.cancelled_games.load_status, 'ok',
+         'Successfully loaded cancelled games data');
+    assert.ok(Api.cancelled_games.nGames > 0, 'Parsed some cancelled games');
+    assert.equal(Api.cancelled_games.games[0]['status'], 'CANCELLED',
+          "Cancelled game has expected status");
     start();
   });
 });
@@ -346,11 +358,20 @@ test("test_Api.parseUserPrefsData", function(assert) {
   });
 });
 
+test("test_Api.parseUserPrefsDataFireOvershooting", function(assert) {
+  stop();
+  Api.getUserPrefsData(function() {
+    assert.equal(Api.user_prefs.fire_overshooting, false, "Successfully parsed fire overshooting value");
+    start();
+  });
+});
+
 test("test_Api.getGameData", function(assert) {
   stop();
-  Game.game = '1';
+  var gameId = BMTestUtils.testGameId('frasquito_wiseman_specifydice');
+  Game.game = gameId;
   Api.getGameData(Game.game, 10, function() {
-    assert.equal(Api.game.gameId, '1', "parseGameData() parsed gameId from API data");
+    assert.equal(Api.game.gameId, gameId, "parseGameData() parsed gameId from API data");
     assert.equal(Api.game.isParticipant, true, "parseGameData() set isParticipant based on API data");
     assert.equal(Api.game.playerIdx, 0, "parseGameData() set playerIdx based on API data");
     assert.equal(Api.game.opponentIdx, 1, "parseGameData() set opponentIdx based on API data");
@@ -363,9 +384,10 @@ test("test_Api.getGameData", function(assert) {
 
 test("test_Api.getGameData_nonplayer", function(assert) {
   stop();
-  Game.game = '10';
+  var gameId = BMTestUtils.testGameId('frasquito_wiseman_specifydice_nonplayer');
+  Game.game = gameId;
   Api.getGameData(Game.game, 10, function() {
-    assert.equal(Api.game.gameId, '10',
+    assert.equal(Api.game.gameId, gameId,
           "parseGameData() set gameId for nonparticipant");
     delete Game.game;
     start();
@@ -374,21 +396,26 @@ test("test_Api.getGameData_nonplayer", function(assert) {
 
 test("test_Api.getGameData_somelogs", function(assert) {
   stop();
-  Game.game = '3';
-  Api.getGameData(Game.game, 3, function() {
-    assert.equal(Api.game.actionLog.length, 3, "getGameData() passed limited action log length");
-    assert.equal(Api.game.chatLog.length, 3, "getGameData() passed limited chat log length");
+  var gameId = BMTestUtils.testGameId('washu_hooloovoo_cant_win');
+  Game.game = gameId;
+  Api.getGameData(Game.game, 10, function() {
+    assert.equal(Api.game.actionLog.length, 10, "getGameData() passed limited action log length");
+    assert.equal(Api.game.chatLog.length, 10, "getGameData() passed limited chat log length");
     delete Game.game;
     start();
   });
 });
 
+// Technically, this is a cheat.  It's showing that when the backend
+// sends the full logs, the Api object receives them, but it is not
+// testing whether Api.getGameData() successfully sends the request
+// for full logs, because the API response is canned, so it can't test that.
 test("test_Api.getGameData_alllogs", function(assert) {
   stop();
-  Game.game = '3';
-  Api.getGameData(Game.game, 0, function() {
-    assert.ok(Api.game.actionLog.length > 3, "getGameData() passed unlimited action log length");
-    assert.ok(Api.game.chatLog.length > 3, "getGameData() passed unlimited chat log length");
+  Game.game = BMTestUtils.testGameId('washu_hooloovoo_cant_win_fulllogs');
+  Api.getGameData(Game.game, undefined, function() {
+    assert.ok(Api.game.actionLog.length > 10, "getGameData() passed unlimited action log length");
+    assert.ok(Api.game.chatLog.length > 10, "getGameData() passed unlimited chat log length");
     delete Game.game;
     start();
   });
@@ -398,11 +425,12 @@ test("test_Api.getGameData_alllogs", function(assert) {
 // test any details of parsePlayerData()'s processing here
 test("test_Api.parseGamePlayerData", function(assert) {
   stop();
-  Game.game = '1';
+  var gameId = BMTestUtils.testGameId('frasquito_wiseman_specifydice');
+  Game.game = gameId;
   Api.getGameData(Game.game, 10, function() {
-    assert.deepEqual(Api.game.player.playerId, 1,
-              "player ID should be parsed from API response");
-    assert.deepEqual(Api.game.player.playerName, 'tester1',
+    assert.ok(Api.game.player.playerId,
+              "player ID should be set in API response");
+    assert.deepEqual(Api.game.player.playerName, 'responder001',
               "player name should be parsed from API response");
     assert.deepEqual(Api.game.player.waitingOnAction, true,
               "'waiting on action' status should be parsed from API response");
@@ -412,27 +440,28 @@ test("test_Api.parseGamePlayerData", function(assert) {
               "side score should be parsed from API response");
     assert.deepEqual(Api.game.player.gameScoreArray, {'W': 0, 'L': 0, 'D': 0, },
               "game score array should be parsed from API response");
-    assert.deepEqual(Api.game.player.lastActionTime, 0,
-              "last action time should be parsed from API response");
+    assert.ok(Api.game.player.lastActionTime,
+              "last action time is set in API response");
     assert.deepEqual(Api.game.player.hasDismissedGame, false,
               "'has dismissed game' should be parsed from API response");
     assert.deepEqual(Api.game.player.canStillWin, null,
               "'can still win' should be parsed from API response");
     assert.deepEqual(Api.game.player.button, {
-                'name': 'Avis',
-                'recipe': '(4) (4) (10) (12) (X)',
-                'artFilename': 'avis.png',
+                'name': 'Frasquito',
+                'recipe': '(4) (6) (8) (12) (2/20)',
+                'originalRecipe': '(4) (6) (8) (12) (2/20)',
+                'artFilename': 'frasquito.png',
               }, "recipe data should be parsed from API response");
     assert.deepEqual(Api.game.player.activeDieArray[0].description, '4-sided die',
               "die descriptions should be parsed");
-    assert.deepEqual(Api.game.player.activeDieArray[4].recipe, '(X)',
+    assert.deepEqual(Api.game.player.activeDieArray[4].recipe, '(2/20)',
               "player die recipe should be parsed correctly");
     assert.deepEqual(Api.game.player.capturedDieArray, [],
               "array of captured dice should be parsed");
     assert.deepEqual(
-      Api.game.player.swingRequestArray['X'],
-      {'min': 4, 'max': 20},
-      "swing request array should contain X entry with correct min/max");
+      Api.game.player.optRequestArray[4],
+      ['2', '20'],
+      "option request array should contain entry for (2/20)");
     delete Game.game;
     start();
   });
@@ -440,25 +469,12 @@ test("test_Api.parseGamePlayerData", function(assert) {
 
 test("test_Api.parseGamePlayerData_option", function(assert) {
   stop();
-  Game.game = '19';
-  Api.getGameData(Game.game, 10, function() {
+  var gameId = BMTestUtils.testGameId('frasquito_wiseman_specifydice');
+  Api.getGameData(gameId, 10, function() {
     assert.deepEqual(Api.game.player.swingRequestArray, {});
     assert.deepEqual(Api.game.player.optRequestArray, {
-      2: [2, 12],
-      3: [8, 16],
-      4: [20, 24],
+      4: ["2", "20"],
     });
-    delete Game.game;
-    start();
-  });
-});
-
-test("test_Api.playerWLTText", function(assert) {
-  stop();
-  Api.getGameData('5', 10, function() {
-    var text = Api.playerWLTText('opponent');
-    assert.ok(text.match('2/3/0'),
-       "opponent WLT text should contain opponent's view of WLT state");
     start();
   });
 });
@@ -561,7 +577,7 @@ test("test_Api.loadForumThread", function(assert) {
 
 test("test_Api.getActivePlayers", function(assert) {
   stop();
-  Api.getActivePlayers(20,
+  Api.getActivePlayers(50,
     function() {
       assert.equal(Api.active_players.load_status, 'ok',
         'Successfully retrieved active players');
@@ -571,7 +587,7 @@ test("test_Api.getActivePlayers", function(assert) {
 
 test("test_Api.parseActivePlayers", function(assert) {
   stop();
-  Api.getActivePlayers(20,
+  Api.getActivePlayers(50,
     function() {
       assert.ok(Api.active_players.players.length,
         "Successfully parsed active players info");
@@ -618,7 +634,7 @@ test("test_Api.parseOpenGames", function(assert) {
 
 test("test_Api.joinOpenGame", function(assert) {
   stop();
-  Api.joinOpenGame(21, 'Avis',
+  Api.joinOpenGame(4400, 'Avis',
     function() {
       assert.equal(Api.join_game_result.load_status, 'ok',
         'Successfully retrieved open games');
@@ -632,7 +648,7 @@ test("test_Api.joinOpenGame", function(assert) {
 
 test("test_Api.parseJoinGameResult", function(assert) {
   stop();
-  Api.joinOpenGame(21, 'Avis',
+  Api.joinOpenGame(4400, 'Avis',
     function() {
       assert.equal(Api.join_game_result.success, true,
         "Successfully parsed join game result");
@@ -667,7 +683,7 @@ test("test_Api.parseSearchResults_games", function(assert) {
   };
 
   Api.searchGameHistory(searchParameters, function() {
-    assert.equal(Api.game_history.games.length, 1,
+    assert.ok(Api.game_history.games.length > 0,
       "Successfully parsed search results games list");
     start();
   });
@@ -681,10 +697,11 @@ test("test_Api.parseSearchResults_summary", function(assert) {
             'numberOfResults': '20',
             'page': '1',
             'playerNameA': 'tester2',
+            'buttonNameA': 'Avis',
   };
 
   Api.searchGameHistory(searchParameters, function() {
-    assert.equal(Api.game_history.summary.matchesFound, 2,
+    assert.ok(Api.game_history.summary.matchesFound > 0,
       "Successfully parsed search results summary data");
     start();
   });

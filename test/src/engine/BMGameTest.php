@@ -15,7 +15,8 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
      * This method is called before a test is executed.
      */
     protected function setUp() {
-        $this->object = new BMGame;
+        $this->object = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $this->object->hasPlayerAcceptedGameArray = array(TRUE, TRUE);
     }
 
     /**
@@ -27,34 +28,82 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * @covers BMGame::__get
+     */
+    public function test_get_BMPlayer_props() {
+        $player1 = new BMPlayer;
+        $player2 = new BMPlayer;
+
+        $player1->button = new BMButton;
+        $player1->button->load('(1) (2) (4) (X)', 'test1');
+
+        $player2->button = new BMButton;
+        $player2->button->load('(4) (Y)', 'test2');
+
+        $die0_0 = new BMDie;
+        $die0_0->init(5);
+        $die0_1 = new BMDie;
+        $die0_1->init(7);
+        $die0_2 = new BMDie;
+        $die0_2->init(13);
+
+        $die1_0 = new BMDie;
+        $die1_0->init(11);
+
+        $player1->activeDieArray = array($die0_0, $die0_1, $die0_2);
+        $player2->activeDieArray = array($die1_0);
+
+        $this->object->playerArray = array($player1, $player2);
+
+        $buttonArray = $this->object->buttonArray;
+        $this->assertCount(2, $buttonArray);
+        $this->assertEquals('(1) (2) (4) (X)', $this->object->buttonArray[0]->recipe);
+        $this->assertEquals('test1', $this->object->buttonArray[0]->name);
+        $this->assertEquals('(4) (Y)', $this->object->buttonArray[1]->recipe);
+        $this->assertEquals('test2', $this->object->buttonArray[1]->name);
+
+        $activeDieArrayArray = $this->object->activeDieArrayArray;
+        $this->assertCount(2, $activeDieArrayArray);
+        $this->assertCount(3, $activeDieArrayArray[0]);
+        $this->assertCount(1, $activeDieArrayArray[1]);
+        $this->assertEquals(5, $activeDieArrayArray[0][0]->max);
+        $this->assertEquals(7, $activeDieArrayArray[0][1]->max);
+        $this->assertEquals(13, $activeDieArrayArray[0][2]->max);
+        $this->assertEquals(11, $activeDieArrayArray[1][0]->max);
+    }
+
+    /**
      * @covers BMGame::update_game_state_start_game
      */
     public function test_update_game_state_start_game() {
-        $this->object->gameState = BMGameState::START_GAME;
-        $this->object->update_game_state();
-        $this->assertEquals(BMGameState::START_GAME, $this->object->gameState);
+        $game = new BMGame;
+        $game->gameState = BMGameState::START_GAME;
+        $game->update_game_state();
+        $this->assertEquals(BMGameState::START_GAME, $game->gameState);
 
         // both players must be set before advancing the game
-        $this->object->gameState = BMGameState::START_GAME;
-        $Button1 = new BMButton;
-        $Button2 = new BMButton;
-        $this->object->buttonArray = array($Button1, $Button2);
-        $this->object->maxWins = 3;
-        $this->object->update_game_state();
+        $game->gameState = BMGameState::START_GAME;
+        $button1 = new BMButton;
+        $button2 = new BMButton;
+        $game->buttonArray = array($button1, $button2);
+        $game->maxWins = 3;
+        $game->update_game_state();
         $this->assertEquals(BMGameState::START_GAME, $this->object->gameState);
 
-        $this->object->gameState = BMGameState::START_GAME;
-        $this->object->playerIdArray = array(12345, 54321);
-        $Button1 = new BMButton;
-        $Button2 = new BMButton;
-        $this->object->buttonArray = array($Button1, $Button2);
-        $this->object->maxWins = 3;
-        $this->object->update_game_state();
-        $this->assertEquals(BMGameState::APPLY_HANDICAPS, $this->object->gameState);
-        $this->assertEquals(0, $this->object->nRecentPasses);
-        $this->assertEquals(array(array(0, 0, 0), array(0, 0, 0)),
-                            $this->object->gameScoreArrayArray);
-        $this->assertEquals(array(FALSE, FALSE), $this->object->autopassArray);
+        $game->gameState = BMGameState::START_GAME;
+        $game->playerIdArray = array(12345, 54321);
+        $button1 = new BMButton;
+        $button2 = new BMButton;
+        $game->buttonArray = array($button1, $button2);
+        $game->maxWins = 3;
+        $game->update_game_state();
+        $this->assertEquals(BMGameState::APPLY_HANDICAPS, $game->gameState);
+        $this->assertEquals(0, $game->nRecentPasses);
+        $this->assertEquals(array(array('W' => 0, 'L' => 0, 'D' => 0),
+                                  array('W' => 0, 'L' => 0, 'D' => 0)),
+                            $game->gameScoreArrayArray);
+        $this->assertEquals(array(FALSE, FALSE), $game->autopassArray);
+        $this->assertEquals(array(FALSE, FALSE), $game->fireOvershootingArray);
     }
 
     /**
@@ -83,25 +132,50 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
 
         $this->object->playerIdArray = array(12345, 54321);
         $this->object->gameState = BMGameState::APPLY_HANDICAPS;
-        $this->object->maxWins = 3;
-        $this->object->update_game_state();
-        $this->assertEquals(BMGameState::APPLY_HANDICAPS,
-                            $this->object->gameState);
-
-        $this->object->playerIdArray = array('12345', '54321');
-        $this->object->gameState = BMGameState::APPLY_HANDICAPS;
         $this->object->gameScoreArrayArray = array(array(0, 0, 0),array(0, 0, 0));
         $this->object->maxWins = 3;
         $this->object->update_game_state();
-        $this->assertEquals(BMGameState::LOAD_DICE_INTO_BUTTONS,
+        $this->assertEquals(BMGameState::CHOOSE_JOIN_GAME,
                             $this->object->gameState);
 
-        $this->object->playerIdArray = array('12345', '54321');
+        $this->object->playerIdArray = array(12345, 54321);
         $this->object->gameState = BMGameState::APPLY_HANDICAPS;
         $this->object->gameScoreArrayArray = array(array(3, 0, 0),array(0, 3, 0));
         $this->object->maxWins = 3;
         $this->object->update_game_state();
         $this->assertEquals(BMGameState::END_GAME, $this->object->gameState);
+    }
+
+    /**
+     * @covers BMGame::do_next_step_choose_join_game
+     */
+    public function test_do_next_step_choose_join_game_unspecified_acceptance() {
+        $this->object->gameState = BMGameState::CHOOSE_JOIN_GAME;
+
+        $this->object->update_game_state();
+        $this->assertEquals(BMGameState::SPECIFY_RECIPES, $this->object->gameState);
+    }
+
+    /**
+     * @covers BMGame::do_next_step_choose_join_game
+     */
+    public function test_do_next_step_choose_join_game_all_accepted() {
+        $this->object->gameState = BMGameState::CHOOSE_JOIN_GAME;
+        $this->object->hasPlayerAcceptedGameArray = array(TRUE, TRUE);
+
+        $this->object->update_game_state();
+        $this->assertEquals(BMGameState::SPECIFY_RECIPES, $this->object->gameState);
+    }
+
+    /**
+     * @covers BMGame::do_next_step_choose_join_game
+     */
+    public function test_do_next_step_choose_join_game_unaccepted() {
+        $this->object->gameState = BMGameState::CHOOSE_JOIN_GAME;
+        $this->object->hasPlayerAcceptedGameArray = array(TRUE, FALSE);
+
+        $this->object->update_game_state();
+        $this->assertEquals(BMGameState::CHOOSE_JOIN_GAME, $this->object->gameState);
     }
 
     /**
@@ -259,11 +333,6 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
      * @covers BMGame::update_game_state_add_available_dice_to_game
      */
     public function test_update_game_state_add_available_dice_to_game() {
-        $this->object->gameState = BMGameState::ADD_AVAILABLE_DICE_TO_GAME;
-        $this->object->update_game_state();
-        $this->assertEquals(BMGameState::ADD_AVAILABLE_DICE_TO_GAME,
-                            $this->object->gameState);
-
         $this->object->gameState = BMGameState::ADD_AVAILABLE_DICE_TO_GAME;
         $die1 = new BMDie;
         $die2 = new BMDie;
@@ -567,7 +636,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $die3 = BMDie::create_from_recipe('(10)');
         // the reserve die is selected
         $die4 = BMDie::create_from_recipe('r(20)');
-        $die4->selected = TRUE;
+        $die4->add_flag('AddReserve');
 
         $this->object->gameState = BMGameState::CHOOSE_RESERVE_DICE;
         // all decisions have been made, so we are not waiting on anyone
@@ -596,12 +665,13 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $recipe2 = '(6) (12) (20) (20)';
         $button1->load($recipe1);
         $button2->load($recipe2);
-        $this->object->activeDieArrayArray = array($button1->dieArray,
-                                                   $button2->dieArray);
-        $this->object->swingRequestArrayArray = array(array(), array());
-        $this->object->gameScoreArrayArray = array_fill(0, $this->object->nPlayers, array(0, 0, 0));
+        $player1 = $this->object->playerArray[0];
+        $player1->activeDieArray = $button1->dieArray;
+        $player2 = $this->object->playerArray[1];
+        $player2->activeDieArray = $button2->dieArray;
         $this->object->do_next_step();
-        $this->assertEquals(array(FALSE, FALSE), $this->object->waitingOnActionArray);
+        $this->assertFalse($this->object->playerArray[0]->waitingOnAction);
+        $this->assertFalse($this->object->playerArray[1]->waitingOnAction);
         $this->assertEquals(array(array(), array()), $this->object->swingValueArrayArray);
 
         // with swing dice
@@ -793,10 +863,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('p(4) (12) p(20) (20) (12)', 'Coil');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
 
-        $game->proceed_to_next_user_action(BMGameState::DETERMINE_INITIATIVE);
+        $game->proceed_to_next_user_action(array('gameStateBreakpoint' => BMGameState::DETERMINE_INITIATIVE));
 
         // manually set die values
         $activeDieArrayArray = $game->activeDieArrayArray;
@@ -850,6 +920,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
      * @covers BMGame::react_to_initiative_chance
      */
     public function test_do_next_step_react_to_initiative_perform_chance() {
+        // override RNG and require the test to specify all die values used
+        global $BM_RAND_VALS, $BM_RAND_REQUIRE_OVERRIDE;
+        $BM_RAND_REQUIRE_OVERRIDE = TRUE;
+
         // load buttons
         $button1 = new BMButton;
         $button1->load('(4) (8) (10) c(10) c(4)', 'FuzzFaceAltered');
@@ -858,30 +932,18 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('p(4) (12) p(20) (20) (12)', 'Coil');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
 
-        $game->proceed_to_next_user_action(BMGameState::DETERMINE_INITIATIVE);
+        // Set initial die values
+        $BM_RAND_VALS = array(4, 6, 6, 6, 4, 4, 4, 4, 4, 4);
+        $game->proceed_to_next_user_action(array('gameStateBreakpoint' => BMGameState::DETERMINE_INITIATIVE));
 
         // check that a reaction to initiative cannot yet occur
         $this->assertFalse(
             $game->react_to_initiative(array('action' => 'chance',
                                              'playerIdx' => 0,
                                              'rerolledDieIdx' => 4)));
-
-        // manually set die values
-        $activeDieArrayArray = $game->activeDieArrayArray;
-        $activeDieArrayArray[0][0]->value = 4;
-        $activeDieArrayArray[0][1]->value = 6;
-        $activeDieArrayArray[0][2]->value = 6;
-        $activeDieArrayArray[0][3]->value = 6;
-        $activeDieArrayArray[0][4]->value = 4;
-        $activeDieArrayArray[1][0]->value = 4;
-        $activeDieArrayArray[1][1]->value = 4;
-        $activeDieArrayArray[1][2]->value = 4;
-        $activeDieArrayArray[1][3]->value = 4;
-        $activeDieArrayArray[1][4]->value = 4;
-        $game->activeDieArrayArray = $activeDieArrayArray;
 
         $game->proceed_to_next_user_action();
         $this->assertEquals(BMGameState::REACT_TO_INITIATIVE, $game->gameState);
@@ -924,10 +986,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                                              'rerolledDieIdx' => 0)));
 
         // test correct 'chance' action
+        $BM_RAND_VALS = array(3);
         $reactResponse = $game->react_to_initiative(array('action' => 'chance',
                                                           'playerIdx' => 0,
-                                                          'rerolledDieIdx' => 4,
-                                                          'TESTrerolledDieValue' => 3));
+                                                          'rerolledDieIdx' => 4));
         $this->assertTrue(array_key_exists('gainedInitiative', $reactResponse));
         $this->assertTrue($reactResponse['gainedInitiative']);
 
@@ -954,6 +1016,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
      * @covers BMGame::react_to_initiative_chance
      */
     public function test_do_next_step_react_to_initiative_multiple_chance() {
+        // override RNG and require the test to specify all die values used
+        global $BM_RAND_VALS, $BM_RAND_REQUIRE_OVERRIDE;
+        $BM_RAND_REQUIRE_OVERRIDE = TRUE;
+
         // load buttons
         $button1 = new BMButton;
         $button1->load('(4) (8) (10) c(10) c(12)', 'FuzzFace');
@@ -962,30 +1028,18 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(6) c(6) (10) (12) c(20)', 'John Kovalic');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
 
-        $game->proceed_to_next_user_action(BMGameState::DETERMINE_INITIATIVE);
+        // specify initial die values
+        $BM_RAND_VALS = array(4, 4, 4, 4, 5, 4, 4, 4, 4, 4);
+        $game->proceed_to_next_user_action(array('gameStateBreakpoint' => BMGameState::DETERMINE_INITIATIVE));
 
         // check that a reaction to initiative cannot yet occur
         $this->assertFalse(
             $game->react_to_initiative(array('action' => 'chance',
                                              'playerIdx' => 0,
                                              'rerolledDieIdx' => 4)));
-
-        // manually set die values
-        $activeDieArrayArray = $game->activeDieArrayArray;
-        $activeDieArrayArray[0][0]->value = 4;
-        $activeDieArrayArray[0][1]->value = 4;
-        $activeDieArrayArray[0][2]->value = 4;
-        $activeDieArrayArray[0][3]->value = 4;
-        $activeDieArrayArray[0][4]->value = 5;
-        $activeDieArrayArray[1][0]->value = 4;
-        $activeDieArrayArray[1][1]->value = 4;
-        $activeDieArrayArray[1][2]->value = 4;
-        $activeDieArrayArray[1][3]->value = 4;
-        $activeDieArrayArray[1][4]->value = 4;
-        $game->activeDieArrayArray = $activeDieArrayArray;
 
         $game->proceed_to_next_user_action();
         $this->assertEquals(BMGameState::REACT_TO_INITIATIVE, $game->gameState);
@@ -1003,12 +1057,12 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(4, $game->activeDieArrayArray[1][4]->value);
 
         // test correct 'chance' action by player 1
+        $BM_RAND_VALS = array(3);
         $this->assertTrue(
             array_key_exists('gainedInitiative',
             $game->react_to_initiative(array('action' => 'chance',
                                              'playerIdx' => 0,
-                                             'rerolledDieIdx' => 4,
-                                             'TESTrerolledDieValue' => 3))));
+                                             'rerolledDieIdx' => 4))));
         $this->assertEquals(4, $game->activeDieArrayArray[0][0]->value);
         $this->assertEquals(4, $game->activeDieArrayArray[0][1]->value);
         $this->assertEquals(4, $game->activeDieArrayArray[0][2]->value);
@@ -1020,25 +1074,25 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(4, $game->activeDieArrayArray[1][4]->value);
         $this->assertEquals(BMGameState::DETERMINE_INITIATIVE, $game->gameState);
         $this->assertEquals(array(FALSE, FALSE), $game->waitingOnActionArray);
-        $this->assertFalse(isset($game->activeDieArrayArray[0][3]->disabled));
-        $this->assertFalse(isset($game->activeDieArrayArray[0][4]->disabled));
+        $this->assertFalse($game->activeDieArrayArray[0][3]->has_flag('Disabled'));
+        $this->assertFalse($game->activeDieArrayArray[0][4]->has_flag('Disabled'));
 
         $game->do_next_step();
         $game->proceed_to_next_user_action();
 
         $this->assertEquals(BMGameState::REACT_TO_INITIATIVE, $game->gameState);
         $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
-        $this->assertFalse(isset($game->activeDieArrayArray[0][3]->disabled));
-        $this->assertFalse(isset($game->activeDieArrayArray[0][4]->disabled));
+        $this->assertFalse($game->activeDieArrayArray[0][3]->has_flag('Disabled'));
+        $this->assertFalse($game->activeDieArrayArray[0][4]->has_flag('Disabled'));
 
         // test correct 'chance' action by player 2
+        $BM_RAND_VALS = array(2);
         $this->assertTrue(
             array_key_exists(
                 'gainedInitiative',
                 $game->react_to_initiative(array('action' => 'chance',
                                                  'playerIdx' => 1,
-                                                 'rerolledDieIdx' => 4,
-                                                 'TESTrerolledDieValue' => 2)))
+                                                 'rerolledDieIdx' => 4)))
         );
         $this->assertEquals(4, $game->activeDieArrayArray[0][0]->value);
         $this->assertEquals(4, $game->activeDieArrayArray[0][1]->value);
@@ -1050,26 +1104,26 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(4, $game->activeDieArrayArray[1][2]->value);
         $this->assertEquals(4, $game->activeDieArrayArray[1][3]->value);
         $this->assertEquals(BMGameState::DETERMINE_INITIATIVE, $game->gameState);
-        $this->assertFalse(isset($game->activeDieArrayArray[1][1]->disabled));
-        $this->assertFalse(isset($game->activeDieArrayArray[1][4]->disabled));
-        $this->assertFalse(isset($game->activeDieArrayArray[0][3]->disabled));
-        $this->assertFalse(isset($game->activeDieArrayArray[0][4]->disabled));
+        $this->assertFalse($game->activeDieArrayArray[1][1]->has_flag('Disabled'));
+        $this->assertFalse($game->activeDieArrayArray[1][4]->has_flag('Disabled'));
+        $this->assertFalse($game->activeDieArrayArray[0][3]->has_flag('Disabled'));
+        $this->assertFalse($game->activeDieArrayArray[0][4]->has_flag('Disabled'));
 
         $game->do_next_step();
         $game->proceed_to_next_user_action();
 
         $this->assertEquals(BMGameState::REACT_TO_INITIATIVE, $game->gameState);
         $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
-        $this->assertFalse(isset($game->activeDieArrayArray[1][1]->disabled));
-        $this->assertFalse(isset($game->activeDieArrayArray[1][4]->disabled));
+        $this->assertFalse($game->activeDieArrayArray[1][1]->has_flag('Disabled'));
+        $this->assertFalse($game->activeDieArrayArray[1][4]->has_flag('Disabled'));
 
         // test correct 'chance' action by player 1
+        $BM_RAND_VALS = array(1);
         $this->assertTrue(
             array_key_exists('gainedInitiative',
             $game->react_to_initiative(array('action' => 'chance',
                                              'playerIdx' => 0,
-                                             'rerolledDieIdx' => 4,
-                                             'TESTrerolledDieValue' => 1))));
+                                             'rerolledDieIdx' => 4))));
         $this->assertEquals(4, $game->activeDieArrayArray[0][0]->value);
         $this->assertEquals(4, $game->activeDieArrayArray[0][1]->value);
         $this->assertEquals(4, $game->activeDieArrayArray[0][2]->value);
@@ -1080,10 +1134,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(4, $game->activeDieArrayArray[1][3]->value);
         $this->assertEquals(2, $game->activeDieArrayArray[1][4]->value);
         $this->assertEquals(BMGameState::DETERMINE_INITIATIVE, $game->gameState);
-        $this->assertFalse(isset($game->activeDieArrayArray[0][3]->disabled));
-        $this->assertFalse(isset($game->activeDieArrayArray[0][4]->disabled));
-        $this->assertFalse(isset($game->activeDieArrayArray[1][1]->disabled));
-        $this->assertFalse(isset($game->activeDieArrayArray[1][4]->disabled));
+        $this->assertFalse($game->activeDieArrayArray[0][3]->has_flag('Disabled'));
+        $this->assertFalse($game->activeDieArrayArray[0][4]->has_flag('Disabled'));
+        $this->assertFalse($game->activeDieArrayArray[1][1]->has_flag('Disabled'));
+        $this->assertFalse($game->activeDieArrayArray[1][4]->has_flag('Disabled'));
     }
 
     /**
@@ -1099,10 +1153,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(6) c(6) (10) (12) c(20)', 'John Kovalic');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
 
-        $game->proceed_to_next_user_action(BMGameState::DETERMINE_INITIATIVE);
+        $game->proceed_to_next_user_action(array('gameStateBreakpoint' => BMGameState::DETERMINE_INITIATIVE));
 
         // manually set die values
         $activeDieArrayArray = $game->activeDieArrayArray;
@@ -1151,13 +1205,13 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(1, $game->activeDieArrayArray[1][4]->value);
         $this->assertEquals(array(FALSE, FALSE), $game->waitingOnActionArray);
         $this->assertEquals(BMGameState::REACT_TO_INITIATIVE, $game->gameState);
-        $this->assertTrue($game->activeDieArrayArray[0][3]->disabled);
-        $this->assertTrue($game->activeDieArrayArray[0][4]->disabled);
+        $this->assertTrue($game->activeDieArrayArray[0][3]->has_flag('Disabled'));
+        $this->assertTrue($game->activeDieArrayArray[0][4]->has_flag('Disabled'));
 
         $game->proceed_to_next_user_action();
         $this->assertEquals(BMGameState::START_TURN, $game->gameState);
-        $this->assertFalse(isset($game->activeDieArrayArray[0][3]->disabled));
-        $this->assertFalse(isset($game->activeDieArrayArray[0][4]->disabled));
+        $this->assertFalse($game->activeDieArrayArray[0][3]->has_flag('Disabled'));
+        $this->assertFalse($game->activeDieArrayArray[0][4]->has_flag('Disabled'));
     }
 
     /**
@@ -1173,10 +1227,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('p(4) (12) p(20) (20) (12)', 'Coil');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
 
-        $game->proceed_to_next_user_action(BMGameState::DETERMINE_INITIATIVE);
+        $game->proceed_to_next_user_action(array('gameStateBreakpoint' => BMGameState::DETERMINE_INITIATIVE));
 
         // manually set die values
         $activeDieArrayArray = $game->activeDieArrayArray;
@@ -1239,10 +1293,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('f(6) (10) f(10) (12) (20)', 'Mirumoto');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
 
-        $game->proceed_to_next_user_action(BMGameState::DETERMINE_INITIATIVE);
+        $game->proceed_to_next_user_action(array('gameStateBreakpoint' => BMGameState::DETERMINE_INITIATIVE));
 
         // check that a reaction to initiative cannot yet occur
         $this->assertFalse(
@@ -1362,8 +1416,8 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(4, $game->activeDieArrayArray[1][3]->value);
         $this->assertEquals(4, $game->activeDieArrayArray[1][4]->value);
         $this->assertEquals(BMGameState::DETERMINE_INITIATIVE, $game->gameState);
-        $this->assertTrue($game->activeDieArrayArray[0][1]->dizzy);
-        $this->assertFalse(isset($game->activeDieArrayArray[0][3]->dizzy));
+        $this->assertTrue($game->activeDieArrayArray[0][1]->has_flag('Dizzy'));
+        $this->assertFalse($game->activeDieArrayArray[0][3]->has_flag('Dizzy'));
 
         $game->proceed_to_next_user_action();
 
@@ -1389,10 +1443,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(4, $game->activeDieArrayArray[1][3]->value);
         $this->assertEquals(4, $game->activeDieArrayArray[1][4]->value);
         $this->assertEquals(BMGameState::DETERMINE_INITIATIVE, $game->gameState);
-        $this->assertTrue($game->activeDieArrayArray[0][1]->dizzy);
-        $this->assertFalse(isset($game->activeDieArrayArray[0][3]->dizzy));
-        $this->assertFalse(isset($game->activeDieArrayArray[1][0]->dizzy));
-        $this->assertTrue($game->activeDieArrayArray[1][2]->dizzy);
+        $this->assertTrue($game->activeDieArrayArray[0][1]->has_flag('Dizzy'));
+        $this->assertFalse($game->activeDieArrayArray[0][3]->has_flag('Dizzy'));
+        $this->assertFalse($game->activeDieArrayArray[1][0]->has_flag('Dizzy'));
+        $this->assertTrue($game->activeDieArrayArray[1][2]->has_flag('Dizzy'));
 
         $game->proceed_to_next_user_action();
 
@@ -1419,10 +1473,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(4, $game->activeDieArrayArray[1][3]->value);
         $this->assertEquals(4, $game->activeDieArrayArray[1][4]->value);
         $this->assertEquals(BMGameState::DETERMINE_INITIATIVE, $game->gameState);
-        $this->assertTrue($game->activeDieArrayArray[0][1]->dizzy);
-        $this->assertTrue($game->activeDieArrayArray[0][3]->dizzy);
-        $this->assertFalse(isset($game->activeDieArrayArray[1][0]->dizzy));
-        $this->assertTrue($game->activeDieArrayArray[1][2]->dizzy);
+        $this->assertTrue($game->activeDieArrayArray[0][1]->has_flag('Dizzy'));
+        $this->assertTrue($game->activeDieArrayArray[0][3]->has_flag('Dizzy'));
+        $this->assertFalse($game->activeDieArrayArray[1][0]->has_flag('Dizzy'));
+        $this->assertTrue($game->activeDieArrayArray[1][2]->has_flag('Dizzy'));
 
         $game->proceed_to_next_user_action();
 
@@ -1448,20 +1502,50 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(4, $game->activeDieArrayArray[1][3]->value);
         $this->assertEquals(4, $game->activeDieArrayArray[1][4]->value);
         $this->assertEquals(BMGameState::START_ROUND, $game->gameState);
-        $this->assertTrue($game->activeDieArrayArray[0][1]->dizzy);
-        $this->assertTrue($game->activeDieArrayArray[0][3]->dizzy);
-        $this->assertFalse(isset($game->activeDieArrayArray[1][0]->dizzy));
-        $this->assertTrue($game->activeDieArrayArray[1][2]->dizzy);
+        $this->assertTrue($game->activeDieArrayArray[0][1]->has_flag('Dizzy'));
+        $this->assertTrue($game->activeDieArrayArray[0][3]->has_flag('Dizzy'));
+        $this->assertFalse($game->activeDieArrayArray[1][0]->has_flag('Dizzy'));
+        $this->assertTrue($game->activeDieArrayArray[1][2]->has_flag('Dizzy'));
 
         $game->proceed_to_next_user_action();
 
         $this->assertEquals(BMGameState::START_TURN, $game->gameState);
         $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
         $this->assertEquals(0, $game->playerWithInitiativeIdx);
-        $this->assertTrue($game->activeDieArrayArray[0][1]->dizzy);
-        $this->assertTrue($game->activeDieArrayArray[0][3]->dizzy);
-        $this->assertFalse(isset($game->activeDieArrayArray[1][0]->dizzy));
-        $this->assertFalse(isset($game->activeDieArrayArray[1][2]->dizzy));
+        $this->assertTrue($game->activeDieArrayArray[0][1]->has_flag('Dizzy'));
+        $this->assertTrue($game->activeDieArrayArray[0][3]->has_flag('Dizzy'));
+        $this->assertFalse($game->activeDieArrayArray[1][0]->has_flag('Dizzy'));
+        $this->assertFalse($game->activeDieArrayArray[1][2]->has_flag('Dizzy'));
+    }
+
+    /**
+     * @covers BMGame::do_next_step_react_to_initiative
+     *
+     * This tests that warrior dice cannot be used to react to initiative
+     */
+    public function test_do_next_step_react_to_initiative_warrior_focus_chance() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('`cf(10)', 'Test1');
+
+        $button2 = new BMButton;
+        $button2->load('(2)', 'Test2');
+
+        // load game
+        $game = $this->object;
+        $game->buttonArray = array($button1, $button2);
+
+        $game->proceed_to_next_user_action(array('gameStateBreakpoint' => BMGameState::DETERMINE_INITIATIVE));
+
+        // manually set die values
+        $activeDieArrayArray = $game->activeDieArrayArray;
+        $activeDieArrayArray[0][0]->value = 4;
+        $activeDieArrayArray[1][0]->value = 2;
+        $game->activeDieArrayArray = $activeDieArrayArray;
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertEquals(1, $game->activePlayerIdx);
     }
 
     /**
@@ -1526,6 +1610,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
      */
     public function test_update_game_state_start_turn() {
         $this->object->gameState = BMGameState::START_TURN;
+        $this->object->activePlayerIdx = 0;
         $this->object->update_game_state();
         $this->assertEquals(BMGameState::START_TURN, $this->object->gameState);
 
@@ -1534,7 +1619,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->object->activePlayerIdx = 0;
         $this->object->waitingOnActionArray = array(FALSE, FALSE);
         $this->object->update_game_state();
-        $this->assertEquals(BMGameState::ADJUST_FIRE_DICE, $this->object->gameState);
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING_FOR_TRIP, $this->object->gameState);
         //james: need to check that the attack has been carried out
     }
 
@@ -1546,7 +1631,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
-     * @covers BMGame::update_game_state_start_turn
+     * @covers BMGame::update_game_state_adjust_fire_dice
      */
     public function test_update_game_state_adjust_fire_dice() {
 
@@ -1633,6 +1718,20 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * @covers BMGame::do_next_step_choose_turbo_swing
+     */
+    public function test_do_next_step_choose_turbo_swing() {
+
+    }
+
+    /**
+     * @covers BMGame::update_game_state_choose_turbo_swing
+     */
+    public function test_update_game_state_choose_turbo_swing() {
+
+    }
+
+    /**
      * @covers BMGame::do_next_step_end_turn
      */
     public function test_do_next_step_end_turn() {
@@ -1655,9 +1754,9 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                                                    array($die2));
         $this->object->nRecentPasses = 0;
         $this->object->gameState = BMGameState::END_TURN;
+        $this->object->activePlayerIdx = 0;
         $this->object->update_game_state();
         $this->assertEquals(BMGameState::START_TURN, $this->object->gameState);
-        $this->assertTrue(isset($this->object->activeDieArrayArray));
         $this->assertEquals(0, $this->object->nRecentPasses);
 
         $this->object->playerIdArray = array(12345, 54321);
@@ -1667,7 +1766,6 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->object->gameState = BMGameState::END_TURN;
         $this->object->update_game_state();
         $this->assertEquals(BMGameState::START_TURN, $this->object->gameState);
-        $this->assertTrue(isset($this->object->activeDieArrayArray));
         $this->assertEquals(1, $this->object->nRecentPasses);
 
         $this->object->playerIdArray = array(12345, 54321);
@@ -1677,7 +1775,6 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->object->gameState = BMGameState::END_TURN;
         $this->object->update_game_state();
         $this->assertEquals(BMGameState::START_TURN, $this->object->gameState);
-        $this->assertTrue(isset($this->object->activeDieArrayArray));
         $this->assertEquals(1, $this->object->nRecentPasses);
 
         // both players have passed
@@ -1793,6 +1890,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
      * @covers BMGame::update_game_state_end_round
      */
     public function test_update_game_state_end_round() {
+        $this->object->maxWins = 3;
         $this->object->gameState = BMGameState::END_ROUND;
         $this->object->gameScoreArrayArray = array(array(2,1,2), array(1,2,2));
         $this->object->update_game_state();
@@ -1876,15 +1974,6 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
      * @covers BMGame::add_die
      */
     public function test_add_die() {
-        $die1 = new BMDie;
-        try {
-            $this->object->add_die($die1);
-            $this->fail('activeDieArrayArray must be set before a die can be added.');
-        }
-        catch (LogicException $expected) {
-        }
-
-        $this->object->activeDieArrayArray = array(array(), array());
         $die2 = new BMDie;
         $die2->ownerObject = $this->object;
         $die2->playerIdx = 1;
@@ -1915,18 +2004,16 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         // valid capture
         $die = new BMDie;
         $this->object->activeDieArrayArray = array(array(new BMDie), array($die));
-        $this->object->capture_die($die);
+        $this->object->capture_die($die, 0);
 
         // invalid capture
         $this->object->activeDieArrayArray = array(array(new BMDie), array(new BMDie));
         try {
-            $this->object->capture_die(new BMDie);
+            $this->object->capture_die(new BMDie, 0);
             $this->fail('Captured die does not exist for the defender.');
         }
         catch (LogicException $expected) {
         }
-
-
     }
 
     /**
@@ -1982,7 +2069,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $die2->init(20);
         $die2->value = 2;
 
-        $game = new BMGame;
+        $game = $this->object;
         $game->activeDieArrayArray = array(array($die1), array($die2));
         $game->activePlayerIdx = 0;
 
@@ -2434,21 +2521,15 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->object->playerIdArray = array(12345, 54321);
         $die1 = new BMDie;
         $die2 = new BMDie;
-        $this->object->dieArrayArray = array(array($die1), array($die2));
-        $this->assertEquals($die1, $this->object->dieArrayArray[0][0]);
-        $this->assertEquals($die2, $this->object->dieArrayArray[1][0]);
+        $this->object->activeDieArrayArray = array(array($die1), array($die2));
+        $this->assertEquals($die1, $this->object->activeDieArrayArray[0][0]);
+        $this->assertEquals($die2, $this->object->activeDieArrayArray[1][0]);
 
         $this->object->gameScoreArrayArray = array(array(2,1,1), array(1,2,1));
 
         try {
             $this->object->gameScoreArrayArray = array(array(2,1,1), array(1,2));
             $this->fail('W/L/D must be three numbers.');
-        } catch (InvalidArgumentException $expected) {
-        }
-
-        try {
-            $this->object->gameScoreArrayArray = array(array(2,1,1));
-            $this->fail('There must be the same number of players and game scores.');
         } catch (InvalidArgumentException $expected) {
         }
     }
@@ -2468,7 +2549,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         try {
             $this->object->activeDieArrayArray = 'abc';
             $this->fail('Active die array array must be an array.');
-        } catch (InvalidArgumentException $expected) {
+        } catch (PHPUnit_Framework_Error $expected) {
         }
 
         try {
@@ -2645,19 +2726,19 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         // invalid set
         try {
             $this->object->capturedDieArrayArray = 'abc';
-            $this->fail('Active die array array must be an array.');
-        } catch (InvalidArgumentException $expected) {
+            $this->fail('Captured die array array must be an array.');
+        } catch (PHPUnit_Framework_Error $expected) {
         }
 
         try {
             $this->object->capturedDieArrayArray = array(1, 2);
-            $this->fail('Active die arrays must be arrays.');
+            $this->fail('Captured die arrays must be arrays.');
         } catch (InvalidArgumentException $expected) {
         }
 
         try {
             $this->object->capturedDieArrayArray = array(array(1), array(2));
-            $this->fail('Active die arrays must be arrays of BM dice.');
+            $this->fail('Captured die arrays must be arrays of BM dice.');
         } catch (InvalidArgumentException $expected) {
         }
     }
@@ -2743,10 +2824,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
      * @covers BMGame::__isset
      */
     public function test__isset() {
-        $button1 = new BMButton;
-        $button2 = new BMButton;
-        $this->object->buttonArray = array($button1, $button2);
-        $this->assertTrue(isset($this->object->buttonArray));
+        $player1 = new BMPlayer;
+        $player2 = new BMPlayer;
+        $this->object->playerArray = array($player1, $player2);
+        $this->assertTrue(isset($this->object->playerArray));
     }
 
     /**
@@ -2776,7 +2857,8 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(4) (6) (8) (X) (X)', 'Stark');
 
         // load game
-        $game1 = new BMGame(424242, array(123, 456));
+        $game1 = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game1->hasPlayerAcceptedGameArray = array(TRUE, TRUE);
         $game1->buttonArray = array($button1, $button2);
         $game1->waitingOnActionArray = array(FALSE, FALSE);
         $game1->proceed_to_next_user_action();
@@ -2786,16 +2868,16 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $game1->swingValueArrayArray = array(array('X' => 5), array());
         $game1->proceed_to_next_user_action();
 
-        $out1 = $game1->getJsonData(123);
-        $this->assertEquals(424242, $out1['gameId']);
+        $out1 = $game1->getJsonData(234);
+        $this->assertEquals(535353, $out1['gameId']);
         $this->assertEquals(BMGameState::as_string(BMGameState::SPECIFY_DICE), $out1['gameState']);
         $this->assertEquals(1, $out1['roundNumber']);
-        $this->assertEquals(3, $out1['maxWins']);
+        $this->assertEquals(2, $out1['maxWins']);
         $this->assertEquals(array(), $out1['gameSkillsInfo']);
         $this->assertNull($out1['activePlayerIdx']);
         $this->assertNull($out1['playerWithInitiativeIdx']);
-        $this->assertEquals(123, $out1['playerDataArray'][0]['playerId']);
-        $this->assertEquals(456, $out1['playerDataArray'][1]['playerId']);
+        $this->assertEquals(234, $out1['playerDataArray'][0]['playerId']);
+        $this->assertEquals(567, $out1['playerDataArray'][1]['playerId']);
         $this->assertEquals('Bauer', $out1['playerDataArray'][0]['button']['name']);
         $this->assertEquals('Stark', $out1['playerDataArray'][1]['button']['name']);
         $this->assertEquals(FALSE, $out1['playerDataArray'][0]['waitingOnAction']);
@@ -2856,15 +2938,15 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(array('W' => 0, 'L' => 0, 'D' => 0), $out1['playerDataArray'][1]['gameScoreArray']);
 
 
-        $out2 = $game1->getJsonData(456);
-        $this->assertEquals(424242, $out2['gameId']);
+        $out2 = $game1->getJsonData(567);
+        $this->assertEquals(535353, $out2['gameId']);
         $this->assertEquals(BMGameState::as_string(BMGameState::SPECIFY_DICE), $out2['gameState']);
         $this->assertEquals(1, $out2['roundNumber']);
-        $this->assertEquals(3, $out2['maxWins']);
+        $this->assertEquals(2, $out2['maxWins']);
         $this->assertNull($out2['activePlayerIdx']);
         $this->assertNull($out2['playerWithInitiativeIdx']);
-        $this->assertEquals(123, $out2['playerDataArray'][0]['playerId']);
-        $this->assertEquals(456, $out2['playerDataArray'][1]['playerId']);
+        $this->assertEquals(234, $out2['playerDataArray'][0]['playerId']);
+        $this->assertEquals(567, $out2['playerDataArray'][1]['playerId']);
         $this->assertEquals('Bauer', $out2['playerDataArray'][0]['button']['name']);
         $this->assertEquals('Stark', $out2['playerDataArray'][1]['button']['name']);
         $this->assertEquals(FALSE, $out2['playerDataArray'][0]['waitingOnAction']);
@@ -2919,8 +3001,8 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $game1->swingValueArrayArray = array(array('X' => 5), array('X' => 7));
         $game1->proceed_to_next_user_action();
 
-        $out3 = $game1->getJsonData(123);
-        $this->assertEquals(424242, $out3['gameId']);
+        $out3 = $game1->getJsonData(234);
+        $this->assertEquals(535353, $out3['gameId']);
         $this->assertEquals(BMGameState::as_string(BMGameState::START_TURN), $out3['gameState']);
         $this->assertTrue(count($out3['validAttackTypeArray']) > 0,
             "validAttackTypeArray should contain at least one attack type");
@@ -2930,14 +3012,14 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                 "validAttackTypeArray values should be in known attack set for these buttons");
         }
         $this->assertEquals(1, $out3['roundNumber']);
-        $this->assertEquals(3, $out3['maxWins']);
+        $this->assertEquals(2, $out3['maxWins']);
         $this->assertTrue(isset($out3['activePlayerIdx']));
         $this->assertEquals(
             $out3['activePlayerIdx'],
             $out3['playerWithInitiativeIdx']
         );
-        $this->assertEquals(123, $out3['playerDataArray'][0]['playerId']);
-        $this->assertEquals(456, $out3['playerDataArray'][1]['playerId']);
+        $this->assertEquals(234, $out3['playerDataArray'][0]['playerId']);
+        $this->assertEquals(567, $out3['playerDataArray'][1]['playerId']);
         $this->assertEquals('Bauer', $out3['playerDataArray'][0]['button']['name']);
         $this->assertEquals('Stark', $out3['playerDataArray'][1]['button']['name']);
         $this->assertEquals(0 === $out3['activePlayerIdx'], $out3['playerDataArray'][0]['waitingOnAction']);
@@ -3006,8 +3088,8 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('X Swing Die (with 7 sides)', $out3['playerDataArray'][1]['activeDieArray'][4]['description']);
         $this->assertEquals(array(), $out1['playerDataArray'][0]['capturedDieArray']);
         $this->assertEquals(array(), $out1['playerDataArray'][1]['capturedDieArray']);
-        $this->assertEquals(array('X' => array(4, 20)), $out3['playerDataArray'][0]['swingRequestArray']);
-        $this->assertEquals(array('X' => array(4, 20)), $out3['playerDataArray'][1]['swingRequestArray']);
+        $this->assertEquals(array(), $out3['playerDataArray'][0]['swingRequestArray']);
+        $this->assertEquals(array(), $out3['playerDataArray'][1]['swingRequestArray']);
         $this->assertEquals(27.5, $out3['playerDataArray'][0]['roundScore']);
         $this->assertEquals(16, $out3['playerDataArray'][1]['roundScore']);
         $this->assertEquals(7.7, $out3['playerDataArray'][0]['sideScore']);
@@ -3015,13 +3097,14 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(array('W' => 0, 'L' => 0, 'D' => 0), $out3['playerDataArray'][0]['gameScoreArray']);
         $this->assertEquals(array('W' => 0, 'L' => 0, 'D' => 0), $out3['playerDataArray'][1]['gameScoreArray']);
 
-        $out4 = $game1->getJsonData(456);
+        $out4 = $game1->getJsonData(567);
         $this->assertEquals(5, $out4['playerDataArray'][0]['activeDieArray'][4]['sides']);
         $this->assertEquals(7, $out4['playerDataArray'][1]['activeDieArray'][4]['sides']);
 
         // after one round has been played and tied
         // one player has specified the swing value, the other not
-        $game2 = new BMGame(424242, array(123, 456));
+        $game2 = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game2->hasPlayerAcceptedGameArray = array(TRUE, TRUE);
         $game2->buttonArray = array($button1, $button2);
         $game2->waitingOnActionArray = array(FALSE, FALSE);
         $game2->proceed_to_next_user_action();
@@ -3029,47 +3112,49 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $game2->swingValueArrayArray = array(array('X' => 5), array());
         $game2->proceed_to_next_user_action();
 
-        $out5 = $game2->getJsonData(123);
+        $out5 = $game2->getJsonData(234);
         $this->assertEquals(5, $out5['playerDataArray'][0]['activeDieArray'][4]['sides']);
         $this->assertNull($out5['playerDataArray'][1]['activeDieArray'][4]['sides']);
 
-        $out6 = $game2->getJsonData(456);
+        $out6 = $game2->getJsonData(567);
         $this->assertEquals(5, $out6['playerDataArray'][0]['activeDieArray'][4]['sides']);
         $this->assertNull($out6['playerDataArray'][1]['activeDieArray'][4]['sides']);
 
         // after one round has been played and won
         // one player has specified the swing value, the other not
-        $game2 = new BMGame(424242, array(123, 456));
-        $game2->buttonArray = array($button1, $button2);
-        $game2->waitingOnActionArray = array(FALSE, FALSE);
-        $game2->proceed_to_next_user_action();
-        $game2->gameScoreArrayArray = array(array(1, 0, 0), array(0, 1, 0));
-        $game2->swingValueArrayArray = array(array('X' => 5), array());
-        $game2->proceed_to_next_user_action();
+        $game3 = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game3->hasPlayerAcceptedGameArray = array(TRUE, TRUE);
+        $game3->buttonArray = array($button1, $button2);
+        $game3->waitingOnActionArray = array(FALSE, FALSE);
+        $game3->proceed_to_next_user_action();
+        $game3->gameScoreArrayArray = array(array(1, 0, 0), array(0, 1, 0));
+        $game3->swingValueArrayArray = array(array('X' => 5), array());
+        $game3->proceed_to_next_user_action();
 
-        $out5 = $game2->getJsonData(123);
+        $out5 = $game3->getJsonData(234);
         $this->assertEquals(5, $out5['playerDataArray'][0]['activeDieArray'][4]['sides']);
         $this->assertNull($out5['playerDataArray'][1]['activeDieArray'][4]['sides']);
 
-        $out6 = $game2->getJsonData(456);
+        $out6 = $game3->getJsonData(567);
         $this->assertEquals(5, $out6['playerDataArray'][0]['activeDieArray'][4]['sides']);
         $this->assertNull($out6['playerDataArray'][1]['activeDieArray'][4]['sides']);
 
         // after one round has been played and lost
         // one player has specified the swing value, the other not
-        $game3 = new BMGame(424242, array(123, 456));
-        $game3->buttonArray = array($button1, $button2);
-        $game3->waitingOnActionArray = array(FALSE, FALSE);
-        $game3->proceed_to_next_user_action();
-        $game3->gameScoreArrayArray = array(array(0, 1, 0), array(1, 0, 0));
-        $game3->swingValueArrayArray = array(array('X' => 5), array());
-        $game3->proceed_to_next_user_action();
+        $game4 = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game4->hasPlayerAcceptedGameArray = array(TRUE, TRUE);
+        $game4->buttonArray = array($button1, $button2);
+        $game4->waitingOnActionArray = array(FALSE, FALSE);
+        $game4->proceed_to_next_user_action();
+        $game4->gameScoreArrayArray = array(array(0, 1, 0), array(1, 0, 0));
+        $game4->swingValueArrayArray = array(array('X' => 5), array());
+        $game4->proceed_to_next_user_action();
 
-        $out5 = $game3->getJsonData(123);
+        $out5 = $game4->getJsonData(234);
         $this->assertEquals(5, $out5['playerDataArray'][0]['activeDieArray'][4]['sides']);
         $this->assertNull($out5['playerDataArray'][1]['activeDieArray'][4]['sides']);
 
-        $out6 = $game3->getJsonData(456);
+        $out6 = $game4->getJsonData(567);
         $this->assertEquals(5, $out6['playerDataArray'][0]['activeDieArray'][4]['sides']);
         $this->assertNull($out6['playerDataArray'][1]['activeDieArray'][4]['sides']);
 
@@ -3081,21 +3166,22 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(4) (6) (8) (X) (X)', 'Stark');
 
         // load game
-        $game4 = new BMGame(424242, array(123, 456));
-        $game4->buttonArray = array($button1, $button2);
-        $game4->waitingOnActionArray = array(FALSE, FALSE);
-        $game4->proceed_to_next_user_action();
+        $game5 = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game5->hasPlayerAcceptedGameArray = array(TRUE, TRUE);
+        $game5->buttonArray = array($button1, $button2);
+        $game5->waitingOnActionArray = array(FALSE, FALSE);
+        $game5->proceed_to_next_user_action();
 
         // beginning of game
         // one player has specified the swing value, the other not
-        $game4->swingValueArrayArray = array(array(), array('X' => 5));
-        $game4->proceed_to_next_user_action();
+        $game5->swingValueArrayArray = array(array(), array('X' => 5));
+        $game5->proceed_to_next_user_action();
 
-        $out7 = $game4->getJsonData(123);
+        $out7 = $game5->getJsonData(234);
         $this->assertTrue(isset($out7['playerDataArray'][0]['swingRequestArray']));
         $this->assertTrue(isset($out7['playerDataArray'][1]['swingRequestArray']));
         $this->assertEquals(array(), $out7['playerDataArray'][0]['swingRequestArray']);
-        $this->assertEquals(array('4', '20'), $out7['playerDataArray'][1]['swingRequestArray']['X']);
+        $this->assertEquals(array(), $out7['playerDataArray'][1]['swingRequestArray']);
     }
 
     /**
@@ -3110,7 +3196,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(2,2) (4,4) (6,6) (10,10) (T,T)', 'Tweedledum+dee');
 
         // load game
-        $game1 = new BMGame(424242, array(123, 456));
+        $game1 = $this->object;
         $game1->buttonArray = array($button1, $button2);
         $game1->waitingOnActionArray = array(FALSE, FALSE);
         $game1->proceed_to_next_user_action();
@@ -3121,14 +3207,14 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $game1->proceed_to_next_user_action();
 
         $out1 = $game1->getJsonData(123);
-        $this->assertEquals(424242, $out1['gameId']);
+        $this->assertEquals(535353, $out1['gameId']);
         $this->assertEquals(BMGameState::as_string(BMGameState::SPECIFY_DICE), $out1['gameState']);
         $this->assertEquals(1, $out1['roundNumber']);
-        $this->assertEquals(3, $out1['maxWins']);
+        $this->assertEquals(2, $out1['maxWins']);
         $this->assertNull($out1['activePlayerIdx']);
         $this->assertNull($out1['playerWithInitiativeIdx']);
-        $this->assertEquals(123, $out1['playerDataArray'][0]['playerId']);
-        $this->assertEquals(456, $out1['playerDataArray'][1]['playerId']);
+        $this->assertEquals(234, $out1['playerDataArray'][0]['playerId']);
+        $this->assertEquals(567, $out1['playerDataArray'][1]['playerId']);
         $this->assertEquals('Bauer', $out1['playerDataArray'][0]['button']['name']);
         $this->assertEquals('Tweedledum+dee', $out1['playerDataArray'][1]['button']['name']);
         $this->assertEquals(TRUE, $out1['playerDataArray'][0]['waitingOnAction']);
@@ -3151,24 +3237,24 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
             array('value' => NULL, 'sides' => NULL, 'skills' => array(), 'properties' => array(), 'recipe' => '(X)', 'description' => 'X Swing Die'),
             $out1['playerDataArray'][0]['activeDieArray'][4]);
         $this->assertEquals(
-	    array('value' => NULL, 'sides' => 4, 'skills' => array(), 'properties' => array(),
-                  'recipe' => '(2,2)', 'description' => 'Twin Die (both with 2 sides)'),
+	    array('value' => NULL, 'sides' => 4, 'skills' => array(), 'properties' => array('Twin'),
+                  'recipe' => '(2,2)', 'description' => 'Twin Die (both with 2 sides)', 'subdieArray' => array(array('sides' => 2), array('sides' => 2))),
             $out1['playerDataArray'][1]['activeDieArray'][0]);
         $this->assertEquals(
-	    array('value' => NULL, 'sides' => 8, 'skills' => array(), 'properties' => array(),
-                  'recipe' => '(4,4)', 'description' => 'Twin Die (both with 4 sides)'),
+	    array('value' => NULL, 'sides' => 8, 'skills' => array(), 'properties' => array('Twin'),
+                  'recipe' => '(4,4)', 'description' => 'Twin Die (both with 4 sides)', 'subdieArray' => array(array('sides' => 4), array('sides' => 4))),
             $out1['playerDataArray'][1]['activeDieArray'][1]);
         $this->assertEquals(
-	    array('value' => NULL, 'sides' => 12, 'skills' => array(), 'properties' => array(),
-                  'recipe' => '(6,6)', 'description' => 'Twin Die (both with 6 sides)'),
+	    array('value' => NULL, 'sides' => 12, 'skills' => array(), 'properties' => array('Twin'),
+                  'recipe' => '(6,6)', 'description' => 'Twin Die (both with 6 sides)', 'subdieArray' => array(array('sides' => 6), array('sides' => 6))),
             $out1['playerDataArray'][1]['activeDieArray'][2]);
         $this->assertEquals(
-	    array('value' => NULL, 'sides' => 20, 'skills' => array(), 'properties' => array(),
-                  'recipe' => '(10,10)', 'description' => 'Twin Die (both with 10 sides)'),
+	    array('value' => NULL, 'sides' => 20, 'skills' => array(), 'properties' => array('Twin'),
+                  'recipe' => '(10,10)', 'description' => 'Twin Die (both with 10 sides)', 'subdieArray' => array(array('sides' => 10), array('sides' => 10))),
             $out1['playerDataArray'][1]['activeDieArray'][3]);
         // at the beginning of the game, all opponents' swing dice are hidden
         $this->assertEquals(
-	    array('value' => NULL, 'sides' => NULL, 'skills' => array(), 'properties' => array(),
+	    array('value' => NULL, 'sides' => NULL, 'skills' => array(), 'properties' => array('Twin'),
                   'recipe' => '(T,T)', 'description' => 'Twin T Swing Die'),
             $out1['playerDataArray'][1]['activeDieArray'][4]);
         $this->assertEquals(array(), $out1['playerDataArray'][0]['capturedDieArray']);
@@ -3197,7 +3283,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(8) (10) (1/8) (6/12) (12/20)', 'Green Apple');
 
         // load game
-        $game1 = new BMGame(424242, array(123, 456));
+        $game1 = $this->object;
         $game1->buttonArray = array($button1, $button2);
         $game1->waitingOnActionArray = array(FALSE, FALSE);
         $game1->proceed_to_next_user_action();
@@ -3207,15 +3293,15 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $game1->optValueArrayArray = array(array(), array(2 => 8, 3 => 6, 4 => 20));
         $game1->proceed_to_next_user_action();
 
-        $out1 = $game1->getJsonData(123);
-        $this->assertEquals(424242, $out1['gameId']);
+        $out1 = $game1->getJsonData(234);
+        $this->assertEquals(535353, $out1['gameId']);
         $this->assertEquals(BMGameState::as_string(BMGameState::SPECIFY_DICE), $out1['gameState']);
         $this->assertEquals(1, $out1['roundNumber']);
-        $this->assertEquals(3, $out1['maxWins']);
+        $this->assertEquals(2, $out1['maxWins']);
         $this->assertNull($out1['activePlayerIdx']);
         $this->assertNull($out1['playerWithInitiativeIdx']);
-        $this->assertEquals(123, $out1['playerDataArray'][0]['playerId']);
-        $this->assertEquals(456, $out1['playerDataArray'][1]['playerId']);
+        $this->assertEquals(234, $out1['playerDataArray'][0]['playerId']);
+        $this->assertEquals(567, $out1['playerDataArray'][1]['playerId']);
         $this->assertEquals('Apples', $out1['playerDataArray'][0]['button']['name']);
         $this->assertEquals('Green Apple', $out1['playerDataArray'][1]['button']['name']);
         $this->assertEquals(TRUE, $out1['playerDataArray'][0]['waitingOnAction']);
@@ -3301,15 +3387,15 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(array('W' => 0, 'L' => 0, 'D' => 0), $out1['playerDataArray'][0]['gameScoreArray']);
         $this->assertEquals(array('W' => 0, 'L' => 0, 'D' => 0), $out1['playerDataArray'][1]['gameScoreArray']);
 
-        $out2 = $game1->getJsonData(456);
-        $this->assertEquals(424242, $out2['gameId']);
+        $out2 = $game1->getJsonData(567);
+        $this->assertEquals(535353, $out2['gameId']);
         $this->assertEquals(BMGameState::as_string(BMGameState::SPECIFY_DICE), $out2['gameState']);
         $this->assertEquals(1, $out2['roundNumber']);
-        $this->assertEquals(3, $out2['maxWins']);
+        $this->assertEquals(2, $out2['maxWins']);
         $this->assertNull($out2['activePlayerIdx']);
         $this->assertNull($out2['playerWithInitiativeIdx']);
-        $this->assertEquals(123, $out2['playerDataArray'][0]['playerId']);
-        $this->assertEquals(456, $out2['playerDataArray'][1]['playerId']);
+        $this->assertEquals(234, $out2['playerDataArray'][0]['playerId']);
+        $this->assertEquals(567, $out2['playerDataArray'][1]['playerId']);
         $this->assertEquals('Apples', $out2['playerDataArray'][0]['button']['name']);
         $this->assertEquals('Green Apple', $out2['playerDataArray'][1]['button']['name']);
         $this->assertEquals(TRUE, $out2['playerDataArray'][0]['waitingOnAction']);
@@ -3410,7 +3496,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertTrue($button2->dieArray[4]->needsSwingValue);
 
         // load game
-        $game = new BMGame(424242, array(123, 456), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->proceed_to_next_user_action();
@@ -3449,7 +3535,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         // specify swing dice partially
         $game->swingValueArrayArray = array(array('X' => 19), array());
         $game->proceed_to_next_user_action();
-        $out1 = $game->getJsonData(123);
+        $out1 = $game->getJsonData(234);
         $this->assertEquals(19, $out1['playerDataArray'][0]['activeDieArray'][4]['sides']);
         $this->assertNull($out1['playerDataArray'][1]['activeDieArray'][4]['sides']);
         $this->assertNull($out1['playerDataArray'][0]['activeDieArray'][0]['value']);
@@ -3462,7 +3548,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertNull($out1['playerDataArray'][1]['activeDieArray'][2]['value']);
         $this->assertNull($out1['playerDataArray'][1]['activeDieArray'][3]['value']);
         $this->assertNull($out1['playerDataArray'][1]['activeDieArray'][4]['value']);
-        $out2 = $game->getJsonData(456);
+        $out2 = $game->getJsonData(567);
         $this->assertNull($out2['playerDataArray'][0]['activeDieArray'][4]['sides']);
         $this->assertNull($out2['playerDataArray'][1]['activeDieArray'][4]['sides']);
         $this->assertNull($out2['playerDataArray'][0]['activeDieArray'][0]['value']);
@@ -3836,9 +3922,6 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         // player 2: [4] showing [2], captured [10 8]
         // player 1 takes player 2's d4 with a power attack
 
-        $this->assertFalse(isset($game->prevSwingValueArrayArray));
-        $this->assertFalse(isset($game->prevOptValueArrayArray));
-
         $game->attack = array(0,        // attackerPlayerIdx
                               1,        // defenderPlayerIdx
                               array(2), // attackerAttackDieIdxArray
@@ -3850,9 +3933,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertTrue(!isset($game->activePlayerIdx));
         $this->assertEquals(BMGameState::SPECIFY_DICE, $game->gameState);
         $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
-        $this->assertTrue(isset($game->prevSwingValueArrayArray));
         $this->assertEquals(array(array('X' => 19), array('X' => 4)), $game->prevSwingValueArrayArray);
-        $this->assertFalse(isset($game->prevOptValueArrayArray));
 
         // perform end of round scoring
         $this->assertEquals(array(array('W' => 1, 'L' => 0, 'D' => 0),
@@ -3905,9 +3986,6 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertCount(5, $game->activeDieArrayArray[0]);
         $this->assertCount(5, $game->activeDieArrayArray[1]);
         $game->proceed_to_next_user_action();
-
-        $this->assertFalse(isset($game->prevSwingValueArrayArray));
-        $this->assertFalse(isset($game->prevOptValueArrayArray));
 
         $this->assertCount(5, $game->activeDieArrayArray[0]);
         $this->assertCount(5, $game->activeDieArrayArray[1]);
@@ -4222,7 +4300,8 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $game->gameScoreArrayArray);
         $this->assertEquals(BMGameState::END_GAME, $game->gameState);
         $this->assertEquals(array(FALSE, FALSE), $game->waitingOnActionArray);
-        $this->assertTrue(is_null($game->activeDieArrayArray));
+        $this->assertTrue(empty($game->activeDieArrayArray[0]));
+        $this->assertTrue(empty($game->activeDieArrayArray[1]));
     }
 
     /**
@@ -4273,7 +4352,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -4408,32 +4487,52 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(6, $button1->dieArray[2]->max);
         $this->assertEquals(8, $button1->dieArray[3]->max);
         $this->assertEquals(10, $button1->dieArray[4]->max);
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($button1->dieArray[0]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[0]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[0]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $button1->dieArray[0]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
                             $button1->dieArray[0]->hookList['capture']);
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($button1->dieArray[1]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[1]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[1]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $button1->dieArray[1]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
                             $button1->dieArray[1]->hookList['capture']);
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($button1->dieArray[2]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[2]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[2]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $button1->dieArray[2]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
                             $button1->dieArray[2]->hookList['capture']);
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($button1->dieArray[3]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[3]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[3]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $button1->dieArray[3]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
                             $button1->dieArray[3]->hookList['capture']);
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($button1->dieArray[4]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[4]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[4]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $button1->dieArray[4]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
@@ -4461,7 +4560,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -4519,32 +4618,52 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertNotNull($game->activeDieArrayArray[1][3]->value);
         $this->assertNotNull($game->activeDieArrayArray[1][4]->value);
 
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($game->activeDieArrayArray[0][0]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][0]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][0]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $game->activeDieArrayArray[0][0]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
                             $game->activeDieArrayArray[0][0]->hookList['capture']);
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($game->activeDieArrayArray[0][1]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][1]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][1]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $game->activeDieArrayArray[0][1]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
                             $game->activeDieArrayArray[0][1]->hookList['capture']);
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($game->activeDieArrayArray[0][2]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][2]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][2]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $game->activeDieArrayArray[0][2]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
                             $game->activeDieArrayArray[0][2]->hookList['capture']);
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($game->activeDieArrayArray[0][3]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][3]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][3]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $game->activeDieArrayArray[0][3]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
                             $game->activeDieArrayArray[0][3]->hookList['capture']);
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($game->activeDieArrayArray[0][4]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][4]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][4]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $game->activeDieArrayArray[0][4]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
@@ -4593,8 +4712,12 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertCount(0, $game->capturedDieArrayArray[1]);
         $this->assertEquals(20, $game->capturedDieArrayArray[0][0]->max);
         $this->assertEquals(6, $game->capturedDieArrayArray[0][0]->value);
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('add_skill', 'remove_skill', 'score_value', 'capture'),
                             array_keys($game->capturedDieArrayArray[0][0]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->capturedDieArrayArray[0][0]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->capturedDieArrayArray[0][0]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillValue'),
                             $game->capturedDieArrayArray[0][0]->hookList['score_value']);
         $this->assertEquals(array('BMSkillValue'),
@@ -4677,7 +4800,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -4883,7 +5006,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -5067,7 +5190,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[1]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -5176,7 +5299,8 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(V)', 'Test2');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 1);
+        $game = $this->object;
+        $game->maxWins = 1;
         $game->buttonArray = array($button1, $button2);
 
         $game->waitingOnActionArray = array(FALSE, FALSE);
@@ -5257,7 +5381,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -5461,7 +5585,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[4]->hookList['attack_list']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -5631,6 +5755,12 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(BMGameState::START_TURN, $game->gameState);
 
         $game->update_game_state();
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING_FOR_TRIP, $game->gameState);
+
+        $game->do_next_step();
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING_FOR_TRIP, $game->gameState);
+
+        $game->update_game_state();
         $this->assertEquals(BMGameState::ADJUST_FIRE_DICE, $game->gameState);
 
         $game->do_next_step();
@@ -5652,6 +5782,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertLessThanOrEqual(10, $game->actionLog[1]->params['postAttackDice']['attacker'][0]['value']);
         $this->assertGreaterThanOrEqual(1, $game->actionLog[1]->params['postAttackDice']['attacker'][0]['value']);
 
+        $game->update_game_state();
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING, $game->gameState);
+
+        $game->do_next_step();
         $game->update_game_state();
         $this->assertEquals(BMGameState::END_TURN, $game->gameState);
 
@@ -5734,7 +5868,9 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
 
         $skillList = $game->activeDieArrayArray[1][2]->skillList;
         $this->assertArrayNotHasKey('Berserk', $skillList);
-        $this->assertNotInstanceOf('BMDieSwing', $game->activeDieArrayArray[1][2]);
+        $this->assertInstanceOf('BMDieSwing', $game->activeDieArrayArray[1][2]);
+        $this->assertEquals('V', $game->activeDieArrayArray[1][2]->swingType);
+        $this->assertEquals(11, $game->activeDieArrayArray[1][2]->swingValue);
         $this->assertEquals(6, $game->activeDieArrayArray[1][2]->max);
         $this->assertTrue(isset($game->activeDieArrayArray[1][2]->value));
 
@@ -5757,46 +5893,46 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(1, $button1->dieArray[3]->max);
         $this->assertEquals(4, $button1->dieArray[4]->max);
 
-        $this->assertEquals(array('attack_list', 'initiative_value', 'capture'),
+        $this->assertEquals(array('attack_list', 'initiative_value', 'pre_capture'),
                             array_keys($button1->dieArray[0]->hookList));
         $this->assertEquals(array('BMSkillTrip'),
                             $button1->dieArray[0]->hookList['attack_list']);
         $this->assertEquals(array('BMSkillTrip'),
                             $button1->dieArray[0]->hookList['initiative_value']);
         $this->assertEquals(array('BMSkillTrip'),
-                            $button1->dieArray[0]->hookList['capture']);
-        $this->assertEquals(array('attack_list', 'initiative_value', 'capture'),
+                            $button1->dieArray[0]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'initiative_value', 'pre_capture'),
                             array_keys($button1->dieArray[1]->hookList));
         $this->assertEquals(array('BMSkillTrip'),
                             $button1->dieArray[1]->hookList['attack_list']);
         $this->assertEquals(array('BMSkillTrip'),
                             $button1->dieArray[1]->hookList['initiative_value']);
         $this->assertEquals(array('BMSkillTrip'),
-                            $button1->dieArray[1]->hookList['capture']);
-        $this->assertEquals(array('attack_list', 'initiative_value', 'capture'),
+                            $button1->dieArray[1]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'initiative_value', 'pre_capture'),
                             array_keys($button1->dieArray[2]->hookList));
         $this->assertEquals(array('BMSkillTrip'),
                             $button1->dieArray[2]->hookList['attack_list']);
         $this->assertEquals(array('BMSkillTrip'),
                             $button1->dieArray[2]->hookList['initiative_value']);
         $this->assertEquals(array('BMSkillTrip'),
-                            $button1->dieArray[2]->hookList['capture']);
-        $this->assertEquals(array('attack_list', 'initiative_value', 'capture'),
+                            $button1->dieArray[2]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'initiative_value', 'pre_capture'),
                             array_keys($button1->dieArray[3]->hookList));
         $this->assertEquals(array('BMSkillTrip'),
                             $button1->dieArray[3]->hookList['attack_list']);
         $this->assertEquals(array('BMSkillTrip'),
                             $button1->dieArray[3]->hookList['initiative_value']);
         $this->assertEquals(array('BMSkillTrip'),
-                            $button1->dieArray[3]->hookList['capture']);
-        $this->assertEquals(array('attack_list', 'initiative_value', 'capture'),
+                            $button1->dieArray[3]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'initiative_value', 'pre_capture'),
                             array_keys($button1->dieArray[4]->hookList));
         $this->assertEquals(array('BMSkillTrip'),
                             $button1->dieArray[4]->hookList['attack_list']);
         $this->assertEquals(array('BMSkillTrip'),
                             $button1->dieArray[4]->hookList['initiative_value']);
         $this->assertEquals(array('BMSkillTrip'),
-                            $button1->dieArray[4]->hookList['capture']);
+                            $button1->dieArray[4]->hookList['pre_capture']);
 
         $button2 = new BMButton;
         $button2->load('p(4) (12) p(20) (20) (V)', 'Coil');
@@ -5820,7 +5956,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -5878,46 +6014,46 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertNotNull($game->activeDieArrayArray[1][3]->value);
         $this->assertNotNull($game->activeDieArrayArray[1][4]->value);
 
-        $this->assertEquals(array('attack_list', 'initiative_value', 'capture'),
+        $this->assertEquals(array('attack_list', 'initiative_value', 'pre_capture'),
                             array_keys($game->activeDieArrayArray[0][0]->hookList));
         $this->assertEquals(array('BMSkillTrip'),
                             $game->activeDieArrayArray[0][0]->hookList['attack_list']);
         $this->assertEquals(array('BMSkillTrip'),
                             $game->activeDieArrayArray[0][0]->hookList['initiative_value']);
         $this->assertEquals(array('BMSkillTrip'),
-                            $game->activeDieArrayArray[0][0]->hookList['capture']);
-        $this->assertEquals(array('attack_list', 'initiative_value', 'capture'),
+                            $game->activeDieArrayArray[0][0]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'initiative_value', 'pre_capture'),
                             array_keys($game->activeDieArrayArray[0][1]->hookList));
         $this->assertEquals(array('BMSkillTrip'),
                             $game->activeDieArrayArray[0][1]->hookList['attack_list']);
         $this->assertEquals(array('BMSkillTrip'),
                             $game->activeDieArrayArray[0][1]->hookList['initiative_value']);
         $this->assertEquals(array('BMSkillTrip'),
-                            $game->activeDieArrayArray[0][1]->hookList['capture']);
-        $this->assertEquals(array('attack_list', 'initiative_value', 'capture'),
+                            $game->activeDieArrayArray[0][1]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'initiative_value', 'pre_capture'),
                             array_keys($game->activeDieArrayArray[0][2]->hookList));
         $this->assertEquals(array('BMSkillTrip'),
                             $game->activeDieArrayArray[0][2]->hookList['attack_list']);
         $this->assertEquals(array('BMSkillTrip'),
                             $game->activeDieArrayArray[0][2]->hookList['initiative_value']);
         $this->assertEquals(array('BMSkillTrip'),
-                            $game->activeDieArrayArray[0][2]->hookList['capture']);
-        $this->assertEquals(array('attack_list', 'initiative_value', 'capture'),
+                            $game->activeDieArrayArray[0][2]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'initiative_value', 'pre_capture'),
                             array_keys($game->activeDieArrayArray[0][3]->hookList));
         $this->assertEquals(array('BMSkillTrip'),
                             $game->activeDieArrayArray[0][3]->hookList['attack_list']);
         $this->assertEquals(array('BMSkillTrip'),
                             $game->activeDieArrayArray[0][3]->hookList['initiative_value']);
         $this->assertEquals(array('BMSkillTrip'),
-                            $game->activeDieArrayArray[0][3]->hookList['capture']);
-        $this->assertEquals(array('attack_list', 'initiative_value', 'capture'),
+                            $game->activeDieArrayArray[0][3]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'initiative_value', 'pre_capture'),
                             array_keys($game->activeDieArrayArray[0][4]->hookList));
         $this->assertEquals(array('BMSkillTrip'),
                             $game->activeDieArrayArray[0][4]->hookList['attack_list']);
         $this->assertEquals(array('BMSkillTrip'),
                             $game->activeDieArrayArray[0][4]->hookList['initiative_value']);
         $this->assertEquals(array('BMSkillTrip'),
-                            $game->activeDieArrayArray[0][4]->hookList['capture']);
+                            $game->activeDieArrayArray[0][4]->hookList['pre_capture']);
         $this->assertEquals(array('score_value'),
                             array_keys($game->activeDieArrayArray[1][0]->hookList));
         $this->assertEquals(array('BMSkillPoison'),
@@ -6008,7 +6144,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2 = new BMButton;
         $button2->load('(99) (98) (97)', 'TestTarget');
 
-        $game = new BMGame(234567, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
 
         $game->waitingOnActionArray = array(FALSE, FALSE);
@@ -6043,6 +6179,84 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertCount(2, $game->activeDieArrayArray[1]);
         $this->assertEquals(2, $game->capturedDieArrayArray[0][0]->value);
         $this->assertEquals(99, $game->capturedDieArrayArray[0][0]->max);
+    }
+
+    /**
+     * @coversNothing
+     */
+    public function test_trip_weak_round() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('th(8) (1) (1) (1)', 'TestButton');
+
+        $button2 = new BMButton;
+        $button2->load('h(12) (20)', 'TestTarget');
+
+        $game = $this->object;
+        $game->buttonArray = array($button1, $button2);
+
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+
+        // perform trip attack
+        $game->attack = array(0,        // attackerPlayerIdx
+                              1,        // defenderPlayerIdx
+                              array(0), // attackerAttackDieIdxArray
+                              array(0), // defenderAttackDieIdxArray
+                              'Trip'); // attackType
+
+        global $BM_RAND_VALS;
+        $BM_RAND_VALS = array(5, 1); // trip rerolls
+
+        $game->proceed_to_next_user_action();
+
+        $this->assertCount(4, $game->activeDieArrayArray[0]);
+        $this->assertCount(1, $game->activeDieArrayArray[1]);
+        $this->assertCount(1, $game->capturedDieArrayArray[0]);
+
+        $this->assertEquals(6, $game->activeDieArrayArray[0][0]->max);
+        $this->assertEquals(5, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(10, $game->capturedDieArrayArray[0][0]->max);
+        $this->assertEquals(1, $game->capturedDieArrayArray[0][0]->value);
+    }
+
+    /**
+     * @coversNothing
+     */
+    public function test_trip_mighty_round() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('tH(8) (1) (1) (1)', 'TestButton');
+
+        $button2 = new BMButton;
+        $button2->load('H(12) (20)', 'TestTarget');
+
+        $game = $this->object;
+        $game->buttonArray = array($button1, $button2);
+
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+
+        // perform trip attack
+        $game->attack = array(0,        // attackerPlayerIdx
+                              1,        // defenderPlayerIdx
+                              array(0), // attackerAttackDieIdxArray
+                              array(0), // defenderAttackDieIdxArray
+                              'Trip'); // attackType
+
+        global $BM_RAND_VALS;
+        $BM_RAND_VALS = array(5, 1); // trip rerolls
+
+        $game->proceed_to_next_user_action();
+
+        $this->assertCount(4, $game->activeDieArrayArray[0]);
+        $this->assertCount(1, $game->activeDieArrayArray[1]);
+        $this->assertCount(1, $game->capturedDieArrayArray[0]);
+
+        $this->assertEquals(10, $game->activeDieArrayArray[0][0]->max);
+        $this->assertEquals(5, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(16, $game->capturedDieArrayArray[0][0]->max);
+        $this->assertEquals(1, $game->capturedDieArrayArray[0][0]->value);
     }
 
     /**
@@ -6104,7 +6318,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[3]->hookList['perform_end_of_turn_die_actions']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -6143,16 +6357,11 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
 
         foreach ($game->activeDieArrayArray as $activeDieArray) {
             foreach ($activeDieArray as $die) {
-                $this->assertFalse($die->hasAttacked);
-                $this->assertEquals('', $die->inactive);
+                $this->assertFalse($die->has_flag('IsAttacker'));
             }
         }
 
         $dice = $game->activeDieArrayArray;
-
-        // artificially set one of the ornery dice to be inactive
-        $dice[0][1]->inactive = 'Yes';
-        $this->assertEquals('Yes', $game->activeDieArrayArray[0][1]->inactive);
 
         // recipes are:
         //   (99) o(99) o(99) o(99) (99) (1) (1) (1) (1) (1)
@@ -6190,8 +6399,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
 
         foreach ($game->activeDieArrayArray as $activeDieArray) {
             foreach ($activeDieArray as $die) {
-                $this->assertFalse($die->hasAttacked);
-                $this->assertEquals('', $die->inactive);
+                $this->assertFalse($die->has_flag('IsAttacker'));
             }
         }
 
@@ -6249,7 +6457,8 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('s(20)', 'Test2');
 
         // load game
-        $game = new BMGame(987654, array(234, 567), array('', ''), 4);
+        $game = $this->object;
+        $game->maxWins = 4;
         $game->buttonArray = array($button1, $button2);
 
         $game->waitingOnActionArray = array(FALSE, FALSE);
@@ -6317,11 +6526,19 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(BMGameState::START_TURN, $game->gameState);
 
         $game->update_game_state();
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING_FOR_TRIP, $game->gameState);
+
+        $game->do_next_step();
+        $game->update_game_state();
         $this->assertEquals(BMGameState::ADJUST_FIRE_DICE, $game->gameState);
 
         $game->do_next_step();
         $game->update_game_state();
         $this->assertEquals(BMGameState::COMMIT_ATTACK, $game->gameState);
+
+        $game->do_next_step();
+        $game->update_game_state();
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING, $game->gameState);
 
         $game->do_next_step();
         $this->assertEquals(1, $game->activePlayerIdx);
@@ -6336,6 +6553,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(BMGameState::START_TURN, $game->gameState);
         $game->do_next_step();
         $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+
+        $game->update_game_state();
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING_FOR_TRIP, $game->gameState);
+        $game->do_next_step();
 
         $game->update_game_state();
         $this->assertEquals(BMGameState::ADJUST_FIRE_DICE, $game->gameState);
@@ -6353,6 +6574,11 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $game->attack);
 
         $game->update_game_state();
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING, $game->gameState);
+        $game->do_next_step();
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING, $game->gameState);
+
+        $game->update_game_state();
         $this->assertEquals(BMGameState::END_TURN, $game->gameState);
         $game->do_next_step();
         $this->assertEquals(BMGameState::END_TURN, $game->gameState);
@@ -6362,7 +6588,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $game->do_next_step();
         $this->assertEquals(BMGameState::END_ROUND, $game->gameState);
 
-        $game->proceed_to_next_user_action(BMGameState::START_TURN);
+        $game->proceed_to_next_user_action(array('gameStateBreakpoint' => BMGameState::START_TURN));
         $game->do_next_step();
         $this->assertEquals(1, array_sum($game->waitingOnActionArray));
 
@@ -6474,7 +6700,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -6686,7 +6912,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertInstanceOf('BMDieTwin', $button2->dieArray[3]);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -6786,6 +7012,93 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * @covers BMGame::proceed_to_next_user_action
+     */
+    public function test_twin_asymmetric_swing_die() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('(1) (6,X)', 'Test1');
+        $this->assertEquals('(1) (6,X)', $button1->recipe);
+        // check dice in $button1->dieArray are correct
+        $this->assertCount(2, $button1->dieArray);
+        $this->assertEquals(1, $button1->dieArray[0]->max);
+        $this->assertFalse(isset($button1->dieArray[1]->max));
+        $this->assertInstanceOf('BMDieTwin', $button1->dieArray[1]);
+
+        $button2 = new BMButton;
+        $button2->load('(Y,8) (2)', 'Test2');
+        $this->assertEquals('(Y,8) (2)', $button2->recipe);
+        // check dice in $button2->dieArray are correct
+        $this->assertCount(2, $button2->dieArray);
+        $this->assertFalse(isset($button2->dieArray[0]->max));
+        $this->assertEquals(2, $button2->dieArray[1]->max);
+        $this->assertInstanceOf('BMDieTwin', $button2->dieArray[0]);
+
+        // load game
+        $game = $this->object;
+        $this->assertEquals(BMGameState::START_GAME, $game->gameState);
+        $this->assertEquals(2, $game->maxWins);
+        $game->buttonArray = array($button1, $button2);
+        $this->assertEquals($game, $game->buttonArray[0]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[1]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[0]->dieArray[0]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[0]->dieArray[1]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[1]->dieArray[0]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[1]->dieArray[1]->ownerObject);
+
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(array(), array()), $game->capturedDieArrayArray);
+        $this->assertEquals(array(TRUE, TRUE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::SPECIFY_DICE, $game->gameState);
+        $this->assertEquals(array(array('X' => NULL), array('Y' => NULL)),
+                            $game->swingValueArrayArray);
+
+        // specify swing dice correctly
+        $game->swingValueArrayArray = array(array('X' => 5), array('Y' => 9));
+        $game->proceed_to_next_user_action();
+        $this->assertNotInstanceOf('BMDieSwing', $game->activeDieArrayArray[0][1]->dice[0]);
+        $this->assertInstanceOf('BMDieSwing', $game->activeDieArrayArray[0][1]->dice[1]);
+        $this->assertFalse($game->activeDieArrayArray[0][1]->dice[1]->needsSwingValue);
+        $this->assertInstanceOf('BMDieSwing', $game->activeDieArrayArray[1][0]->dice[0]);
+        $this->assertFalse($game->activeDieArrayArray[1][0]->dice[0]->needsSwingValue);
+        $this->assertNotInstanceOf('BMDieSwing', $game->activeDieArrayArray[1][0]->dice[1]);
+
+        $this->assertEquals(1, array_sum($game->waitingOnActionArray));
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertEquals(array(array('X' => 5), array('Y' => 9)),
+                            $game->swingValueArrayArray);
+        $this->assertEquals( 1, $game->activeDieArrayArray[0][0]->min);
+        $this->assertEquals( 2, $game->activeDieArrayArray[0][1]->min);
+        $this->assertEquals( 2, $game->activeDieArrayArray[1][0]->min);
+        $this->assertEquals( 1, $game->activeDieArrayArray[1][1]->min);
+        $this->assertEquals( 1, $game->activeDieArrayArray[0][0]->max);
+        $this->assertEquals(11, $game->activeDieArrayArray[0][1]->max);
+        $this->assertEquals(17, $game->activeDieArrayArray[1][0]->max);
+        $this->assertEquals( 2, $game->activeDieArrayArray[1][1]->max);
+
+        $this->assertNotNull($game->activeDieArrayArray[0][0]->value);
+        $this->assertNotNull($game->activeDieArrayArray[0][1]->value);
+        $this->assertNotNull($game->activeDieArrayArray[1][0]->value);
+        $this->assertNotNull($game->activeDieArrayArray[1][1]->value);
+
+        // artificially set player 1 as winning initiative
+        $game->playerWithInitiativeIdx = 0;
+        $game->activePlayerIdx = 0;
+        $game->waitingOnActionArray = array(TRUE, FALSE);
+        // artificially set die values
+        $dieArrayArray = $game->activeDieArrayArray;
+        $dieArrayArray[0][0]->value = 1;
+        $dieArrayArray[0][1]->value = 2;
+        $dieArrayArray[1][0]->value = 3;
+        $dieArrayArray[1][1]->value = 2;
+
+        $data = $game->getJsonData(234);
+        $this->assertEquals(array(), $data['playerDataArray'][0]['swingRequestArray']);
+        $this->assertEquals(array(), $data['playerDataArray'][1]['swingRequestArray']);
+    }
+
+    /**
      * @coversUpdate_game_state
      */
     public function test_focus_round() {
@@ -6832,7 +7145,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -6901,8 +7214,8 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                                          'playerIdx' => 0,
                                          'focusValueArray' => array(1 => 1,
                                                                     3 => 6)));
-        $this->assertTrue($game->activeDieArrayArray[0][1]->dizzy);
-        $this->assertFalse(isset($game->activeDieArrayArray[0][3]->dizzy));
+        $this->assertTrue($game->activeDieArrayArray[0][1]->has_flag('Dizzy'));
+        $this->assertFalse($game->activeDieArrayArray[0][3]->has_flag('Dizzy'));
         $game->do_next_step();
         $game->proceed_to_next_user_action();
         $this->assertEquals(BMGameState::START_TURN, $game->gameState);
@@ -6910,7 +7223,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
 
         $dataArray = $game->getJsonData(234);
         $this->assertEquals(array(), $dataArray['playerDataArray'][0]['activeDieArray'][0]['properties']);
-        $this->assertEquals(array('dizzy'), $dataArray['playerDataArray'][0]['activeDieArray'][1]['properties']);
+        $this->assertEquals(array('Dizzy'), $dataArray['playerDataArray'][0]['activeDieArray'][1]['properties']);
         $this->assertEquals(array(), $dataArray['playerDataArray'][0]['activeDieArray'][2]['properties']);
         $this->assertEquals(array(), $dataArray['playerDataArray'][0]['activeDieArray'][3]['properties']);
         $this->assertEquals(array(), $dataArray['playerDataArray'][0]['activeDieArray'][4]['properties']);
@@ -6944,7 +7257,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $game->proceed_to_next_user_action();
         $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
         $this->assertEquals(4, count($game->activeDieArrayArray[1]));
-        $this->assertFalse(isset($game->activeDieArrayArray[0][1]->dizzy));
+        $this->assertFalse($game->activeDieArrayArray[0][1]->has_flag('Dizzy'));
     }
 
     /**
@@ -6996,7 +7309,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -7187,7 +7500,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(6) (12) (20) (20) (X)', 'Hammer');
 
         // load game
-        $game = new BMGame(424242, array(123, 456), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -7278,7 +7591,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $attackLogEntry = end($arrayVal);
         $this->assertEquals('end_winner', $attackLogEntry->actionType);
         $this->assertEquals(1, $attackLogEntry->params['roundNumber']);
-        $this->assertEquals(array(TRUE, FALSE), $attackLogEntry->params['resultForced']);
+        $this->assertEquals(TRUE, $attackLogEntry->params['surrendered']);
     }
 
     /**
@@ -7323,7 +7636,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -7441,6 +7754,76 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
     /**
      * @coversNothing
      */
+    public function test_morph_on_unsuccessful_trip_bug() {
+        // override RNG and require the test to specify all die values used
+        global $BM_RAND_VALS, $BM_RAND_REQUIRE_OVERRIDE;
+        $BM_RAND_REQUIRE_OVERRIDE = TRUE;
+
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('(1) (1) mt(1)', 'MorphingTrip');
+
+        $button2 = new BMButton;
+        $button2->load('s(99) s(99)', 'BigDice');
+
+        $game = $this->object;
+        $this->assertEquals(BMGameState::START_GAME, $game->gameState);
+        $this->assertEquals(2, $game->maxWins);
+        $game->buttonArray = array($button1, $button2);
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $BM_RAND_VALS = array(1, 1, 1, 45, 55); // initial die rolls for both buttons
+        $game->proceed_to_next_user_action();
+
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertEquals(0, $game->playerWithInitiativeIdx);
+
+        // player 1 performs valid trip attack with trip morphing die
+        $game->attack = array(0,        // attackerPlayerIdx
+                              1,        // defenderPlayerIdx
+                              array(2), // attackerAttackDieIdxArray
+                              array(0), // defenderAttackDieIdxArray
+                              'Trip');  // attackType
+
+        // first trip attack should be unsuccessful, and should not trigger morphing
+        $BM_RAND_VALS = array(1, 62);
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(0, count($game->capturedDieArrayArray[0]));
+        $this->assertGreaterThan(1, $game->activeDieArrayArray[1][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][2]->max);
+
+        // player 2 should pass
+        $this->assertEquals(FALSE, $game->playerArray[0]->waitingOnAction);
+        $this->assertEquals(TRUE, $game->playerArray[1]->waitingOnAction);
+        $game->attack = array(1,       // attackerPlayerIdx
+                              0,       // defenderPlayerIdx
+                              array(), // attackerAttackDieIdxArray
+                              array(), // defenderAttackDieIdxArray
+                              'Pass'); // attackType
+        $game->proceed_to_next_user_action();
+
+        // player 1 performs valid trip attack with trip morphing die
+        $this->assertEquals(TRUE, $game->playerArray[0]->waitingOnAction);
+        $this->assertEquals(FALSE, $game->playerArray[1]->waitingOnAction);
+        $game->attack = array(0,        // attackerPlayerIdx
+                              1,        // defenderPlayerIdx
+                              array(2), // attackerAttackDieIdxArray
+                              array(0), // defenderAttackDieIdxArray
+                              'Trip');  // attackType
+
+        // second trip attack should be successful, and should trigger morphing,
+        // requiring another die-roll for the attacker's post-morph value
+        $BM_RAND_VALS = array(1, 1, 32);
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(1, count($game->activeDieArrayArray[1]));
+        $this->assertEquals(1, count($game->capturedDieArrayArray[0]));
+        $this->assertEquals(1, $game->capturedDieArrayArray[0][0]->value);
+        $this->assertEquals(99, $game->activeDieArrayArray[0][2]->max);
+        $this->assertEquals(32, $game->activeDieArrayArray[0][2]->value);
+    }
+
+    /**
+     * @coversNothing
+     */
     public function test_doppelganger_round() {
         // load buttons
         $button1 = new BMButton;
@@ -7453,16 +7836,20 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(10, $button1->dieArray[2]->max);
         $this->assertEquals(12, $button1->dieArray[3]->max);
         $this->assertFalse(isset($button1->dieArray[4]->max));
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('score_value', 'capture', 'add_skill', 'remove_skill'),
                             array_keys($button1->dieArray[3]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[3]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $button1->dieArray[3]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillNull', 'BMSkillValue'),
                             $button1->dieArray[3]->hookList['score_value']);
         $this->assertEquals(array('BMSkillNull', 'BMSkillValue', 'BMSkillDoppelganger'),
                             $button1->dieArray[3]->hookList['capture']);
 
         $button2 = new BMButton;
-        $button2->load('p(4) (12) p(20) (20) (V)', 'Coil');
-        $this->assertEquals('p(4) (12) p(20) (20) (V)', $button2->recipe);
+        $button2->load('p(4) (12) p(20) (20) p(V)', 'CoilAltered');
+        $this->assertEquals('p(4) (12) p(20) (20) p(V)', $button2->recipe);
         // check dice in $button2->dieArray are correct
         $this->assertCount(5, $button2->dieArray);
         $this->assertEquals(4, $button2->dieArray[0]->max);
@@ -7480,9 +7867,13 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             array_keys($button2->dieArray[2]->hookList));
         $this->assertEquals(array('BMSkillPoison'),
                             $button2->dieArray[2]->hookList['score_value']);
+        $this->assertEquals(array('score_value'),
+                            array_keys($button2->dieArray[4]->hookList));
+        $this->assertEquals(array('BMSkillPoison'),
+                            $button2->dieArray[4]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -7543,8 +7934,12 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertNotNull($game->activeDieArrayArray[1][3]->value);
         $this->assertNotNull($game->activeDieArrayArray[1][4]->value);
 
-        $this->assertEquals(array('score_value', 'capture'),
+        $this->assertEquals(array('score_value', 'capture', 'add_skill', 'remove_skill'),
                             array_keys($game->activeDieArrayArray[0][3]->hookList));
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][3]->hookList['add_skill']);
+        $this->assertEquals(array('BMSkillValue'),
+                            $game->activeDieArrayArray[0][3]->hookList['remove_skill']);
         $this->assertEquals(array('BMSkillNull', 'BMSkillValue'),
                             $game->activeDieArrayArray[0][3]->hookList['score_value']);
         $this->assertEquals(array('BMSkillNull', 'BMSkillValue', 'BMSkillDoppelganger'),
@@ -7558,6 +7953,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             array_keys($game->activeDieArrayArray[1][2]->hookList));
         $this->assertEquals(array('BMSkillPoison'),
                             $game->activeDieArrayArray[1][2]->hookList['score_value']);
+        $this->assertEquals(array('score_value'),
+                            array_keys($game->activeDieArrayArray[1][4]->hookList));
+        $this->assertEquals(array('BMSkillPoison'),
+                            $game->activeDieArrayArray[1][4]->hookList['score_value']);
 
         // artificially set player 1 as winning initiative
         $game->playerWithInitiativeIdx = 0;
@@ -7580,10 +7979,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $game->attack = array(0,        // attackerPlayerIdx
                               1,        // defenderPlayerIdx
                               array(3), // attackerAttackDieIdxArray
-                              array(2), // defenderAttackDieIdxArray
+                              array(4), // defenderAttackDieIdxArray
                               'Power'); // attackType
         $this->assertEquals(12, $game->activeDieArrayArray[0][3]->max);
-        $this->assertEquals(20, $game->activeDieArrayArray[1][2]->max);
+        $this->assertEquals(11, $game->activeDieArrayArray[1][4]->max);
 
         $game->proceed_to_next_user_action();
         $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
@@ -7592,9 +7991,11 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertCount(4, $game->activeDieArrayArray[1]);
         $this->assertCount(1, $game->capturedDieArrayArray[0]);
         $this->assertCount(0, $game->capturedDieArrayArray[1]);
-        $this->assertEquals(20, $game->capturedDieArrayArray[0][0]->max);
-        $this->assertEquals(12, $game->capturedDieArrayArray[0][0]->value);
-        $this->assertEquals(20, $game->activeDieArrayArray[0][3]->max);
+        $this->assertEquals(11, $game->capturedDieArrayArray[0][0]->max);
+        $this->assertEquals(7, $game->capturedDieArrayArray[0][0]->value);
+        $this->assertEquals(11, $game->activeDieArrayArray[0][3]->max);
+        $this->assertInstanceOf('BMDieSwing', $game->activeDieArrayArray[0][3]);
+        $this->assertEquals('V', $game->activeDieArrayArray[0][3]->swingType);
         $this->assertFalse($game->activeDieArrayArray[0][3]->has_skill('Doppelganger'));
         $this->assertFalse($game->activeDieArrayArray[0][3]->has_skill('Value'));
         $this->assertFalse($game->activeDieArrayArray[0][3]->has_skill('Null'));
@@ -7647,7 +8048,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
@@ -7879,7 +8280,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[2]->hookList['score_value']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
 
@@ -7888,8 +8289,17 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('', $game->buttonArray[0]->recipe);
 
         $game->buttonArray = array($button1, $button2);
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+
+        $this->assertEquals(BMGameState::SPECIFY_DICE, $game->gameState);
         $this->assertEquals('Echo', $game->buttonArray[0]->name);
         $this->assertEquals('p(4) (12) p(20) (20) (V)', $game->buttonArray[0]->recipe);
+        $this->assertEquals(array(array(), array()), $game->capturedDieArrayArray);
+        $this->assertEquals(array(TRUE, TRUE), $game->waitingOnActionArray);
+        $this->assertEquals(array(array('V' => NULL), array('V' => NULL)),
+                            $game->swingValueArrayArray);
+
         $this->assertCount(5, $game->buttonArray[0]->dieArray);
         $this->assertEquals($game, $game->buttonArray[0]->ownerObject);
         $this->assertEquals($game, $game->buttonArray[1]->ownerObject);
@@ -7903,15 +8313,6 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals($game, $game->buttonArray[1]->dieArray[2]->ownerObject);
         $this->assertEquals($game, $game->buttonArray[1]->dieArray[3]->ownerObject);
         $this->assertEquals($game, $game->buttonArray[1]->dieArray[4]->ownerObject);
-
-        $game->waitingOnActionArray = array(FALSE, FALSE);
-        $game->proceed_to_next_user_action();
-        $this->assertEquals(array(array(), array()), $game->capturedDieArrayArray);
-        $this->assertEquals(array(TRUE, TRUE), $game->waitingOnActionArray);
-        $this->assertEquals(BMGameState::SPECIFY_DICE, $game->gameState);
-        $this->assertEquals(array(array('V' => NULL), array('V' => NULL)),
-                            $game->swingValueArrayArray);
-
     }
 
     /**
@@ -7930,10 +8331,18 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertCount(0, $button2->dieArray);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
+
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(array(), array()), $game->capturedDieArrayArray);
+        $this->assertEquals(array(TRUE, TRUE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::SPECIFY_DICE, $game->gameState);
+        $this->assertEquals(array(array('X' => NULL), array('X' => NULL)),
+                            $game->swingValueArrayArray);
 
         $this->assertEquals('Echo', $game->buttonArray[0]->name);
         $this->assertEquals('(4) (4) (10) (12) (X)', $game->buttonArray[0]->recipe);
@@ -7953,14 +8362,6 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals($game, $game->buttonArray[1]->dieArray[2]->ownerObject);
         $this->assertEquals($game, $game->buttonArray[1]->dieArray[3]->ownerObject);
         $this->assertEquals($game, $game->buttonArray[1]->dieArray[4]->ownerObject);
-
-        $game->waitingOnActionArray = array(FALSE, FALSE);
-        $game->proceed_to_next_user_action();
-        $this->assertEquals(array(array(), array()), $game->capturedDieArrayArray);
-        $this->assertEquals(array(TRUE, TRUE), $game->waitingOnActionArray);
-        $this->assertEquals(BMGameState::SPECIFY_DICE, $game->gameState);
-        $this->assertEquals(array(array('X' => NULL), array('X' => NULL)),
-                            $game->swingValueArrayArray);
     }
 
     /**
@@ -7983,10 +8384,13 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertTrue($button2->dieArray[0]->needsSwingValue);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->buttonArray = array($button1, $button2);
+
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
 
         $this->assertEquals('Echo', $game->buttonArray[0]->name);
         $this->assertEquals('(V)', $game->buttonArray[0]->recipe);
@@ -7995,9 +8399,6 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals($game, $game->buttonArray[1]->ownerObject);
         $this->assertEquals($game, $game->buttonArray[0]->dieArray[0]->ownerObject);
         $this->assertEquals($game, $game->buttonArray[1]->dieArray[0]->ownerObject);
-
-        $game->waitingOnActionArray = array(FALSE, FALSE);
-        $game->proceed_to_next_user_action();
         $this->assertEquals(array(array(), array()), $game->capturedDieArrayArray);
         $this->assertEquals(array(TRUE, TRUE), $game->waitingOnActionArray);
         $this->assertEquals(BMGameState::SPECIFY_DICE, $game->gameState);
@@ -8090,7 +8491,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(1) (1) (1,1) (1,1)', 'Test2');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->autopassArray = array(TRUE, TRUE);
         $game->proceed_to_next_user_action();
@@ -8234,7 +8635,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(1) (X) r(Y)', 'Test2');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->autopassArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -8284,7 +8685,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(X) r(Y)', 'Test2');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->autopassArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -8323,7 +8724,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(BMGameState::CHOOSE_RESERVE_DICE, $game->gameState);
 
         $activeDieArrayArray = $game->activeDieArrayArray;
-        $activeDieArrayArray[1][1]->selected = TRUE;
+        $activeDieArrayArray[1][1]->add_flag('AddReserve');
         $game->waitingOnActionArray = array(FALSE, FALSE);
 
         $game->proceed_to_next_user_action();
@@ -8364,7 +8765,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(1,1) B(Y)', 'Test2');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->proceed_to_next_user_action();
 
@@ -8428,7 +8829,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertArrayHasKey('attacker', $game->actionLog[2]->params['postAttackDice']);
         $this->assertCount(1, $game->actionLog[2]->params['postAttackDice']['attacker']);
         $this->assertEquals(10, $game->actionLog[2]->params['postAttackDice']['attacker'][0]['max']);
-        $this->assertEquals('(10)', $game->actionLog[2]->params['postAttackDice']['attacker'][0]['recipe']);
+        $this->assertEquals('(Y=10)', $game->actionLog[2]->params['postAttackDice']['attacker'][0]['recipe']);
         $this->assertLessThanOrEqual(10, $game->actionLog[2]->params['postAttackDice']['attacker'][0]['value']);
         $this->assertGreaterThanOrEqual(1, $game->actionLog[2]->params['postAttackDice']['attacker'][0]['value']);
 
@@ -8445,6 +8846,66 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * The following unit tests ensure that berserk mood dice apply mood after berserk attacks
+     *
+     * @coversNothing
+     */
+    public function test_berserk_mood() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('(1) (1) B(X)?', 'Test1');
+
+        $button2 = new BMButton;
+        $button2->load('(1,1) (1,1)', 'Test2');
+
+        // load game
+        $game = $this->object;
+        $game->buttonArray = array($button1, $button2);
+        $game->proceed_to_next_user_action();
+
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::SPECIFY_DICE, $game->gameState);
+        $this->assertArrayHasKey('X', $game->swingRequestArrayArray[0]);
+        $this->assertEquals(array(), $game->swingRequestArrayArray[1]);
+        $game->swingValueArrayArray = array(array('X' => 4), array());
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertEquals( 1, $game->activeDieArrayArray[0][0]->max);
+        $this->assertEquals( 1, $game->activeDieArrayArray[0][1]->max);
+        $this->assertEquals( 4, $game->activeDieArrayArray[0][2]->max);
+        $this->assertEquals( 2, $game->activeDieArrayArray[1][0]->max);
+        $this->assertEquals( 2, $game->activeDieArrayArray[1][1]->max);
+
+        // artificially set die value of berserk die
+        $activeDieArrayArray = $game->activeDieArrayArray;
+        $activeDieArrayArray[0][2]->value = 2;
+
+        // round 1, turn 1, player 1 to attack
+        // [1 1 2] vs [2 2]
+        $this->assertNULL($game->attack);
+        $game->attack = array(0,           // attackerPlayerIdx
+                              1,           // defenderPlayerIdx
+                              array(2),    // attackerAttackDieIdxArray
+                              array(0),    // defenderAttackDieIdxArray
+                              'Berserk');  // attackType
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(3, $game->activeDieArrayArray[0]);
+        $this->assertCount(1, $game->activeDieArrayArray[1]);
+        $this->assertCount(1, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][1]->value);
+        $this->assertNotEquals(2, $game->activeDieArrayArray[0][2]->max); // check that it hasn't stayed unsplit
+        $this->assertNotEquals(1, $game->activeDieArrayArray[0][2]->max); // check that mood has triggered after split
+        $this->assertEquals(2, $game->capturedDieArrayArray[0][0]->value);
+    }
+
+    /**
      * The following unit tests ensure that declined courtesy auxiliary swing dice work correctly.
      *
      * @coversNothing
@@ -8458,7 +8919,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2->load('(2) (4) s(10) s(20) (X) +s(X)', 'Merlin');
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->proceed_to_next_user_action();
 
@@ -8525,7 +8986,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertTrue($button2->dieArray[4]->needsOptionValue);
 
         // load game
-        $game = new BMGame(424242, array(123, 456), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->proceed_to_next_user_action();
@@ -8572,7 +9033,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $game->proceed_to_next_user_action();
         $this->assertEquals(BMGameState::SPECIFY_DICE, $game->gameState);
         $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
-        $out1 = $game->getJsonData(123);
+        $out1 = $game->getJsonData(234);
         $this->assertEquals(12, $out1['playerDataArray'][0]['activeDieArray'][2]['sides']);
         $this->assertEquals(16, $out1['playerDataArray'][0]['activeDieArray'][3]['sides']);
         $this->assertEquals(20, $out1['playerDataArray'][0]['activeDieArray'][4]['sides']);
@@ -8591,8 +9052,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertNull($out1['playerDataArray'][1]['activeDieArray'][4]['value']);
         $this->assertEquals('Option Die (with 20 sides)',
                             $out1['playerDataArray'][0]['activeDieArray'][4]['description']);
-
-        $out2 = $game->getJsonData(456);
+        $out2 = $game->getJsonData(567);
         $this->assertNull($out2['playerDataArray'][0]['activeDieArray'][2]['sides']);
         $this->assertNull($out2['playerDataArray'][0]['activeDieArray'][3]['sides']);
         $this->assertNull($out2['playerDataArray'][0]['activeDieArray'][4]['sides']);
@@ -8685,12 +9145,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertInstanceOf('BMDieSwing', $button1->dieArray[4]);
         $this->assertTrue($button1->dieArray[4]->needsSwingValue);
         $this->assertTrue($button1->dieArray[4]->has_skill('Mood'));
-        $this->assertEquals(array('pre_roll', 'add_skill'),
+        $this->assertEquals(array('pre_roll'),
                             array_keys($button1->dieArray[4]->hookList));
         $this->assertEquals(array('BMSkillMood'),
                             $button1->dieArray[4]->hookList['pre_roll']);
-        $this->assertEquals(array('BMSkillMood'),
-                            $button1->dieArray[4]->hookList['add_skill']);
 
         $button2 = new BMButton;
         $button2->load('(3) (12) (20) (20) (X)?', 'Igor');
@@ -8705,15 +9163,13 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertInstanceOf('BMDieSwing', $button2->dieArray[4]);
         $this->assertTrue($button2->dieArray[4]->needsSwingValue);
         $this->assertTrue($button2->dieArray[4]->has_skill('Mood'));
-        $this->assertEquals(array('pre_roll', 'add_skill'),
+        $this->assertEquals(array('pre_roll'),
                             array_keys($button2->dieArray[4]->hookList));
         $this->assertEquals(array('BMSkillMood'),
                             $button2->dieArray[4]->hookList['pre_roll']);
-        $this->assertEquals(array('BMSkillMood'),
-                            $button2->dieArray[4]->hookList['add_skill']);
 
         // load game
-        $game = new BMGame(424242, array(123, 456), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->proceed_to_next_user_action();
@@ -8960,7 +9416,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('(20) (20) (20) (20) (20) (20)', $button2->recipe);
 
         // load game
-        $game = new BMGame(424242, array(123, 456), array('', ''), 2);
+        $game = $this->object;
         $this->assertEquals(BMGameState::START_GAME, $game->gameState);
         $this->assertEquals(2, $game->maxWins);
         $game->proceed_to_next_user_action();
@@ -8995,7 +9451,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2 = new BMButton;
         $button2->load('(10/20) (4/6)');
 
-        $game = new BMGame(424242, array(123, 456));
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -9032,7 +9488,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2 = new BMButton;
         $button2->load('(1) (20)');
 
-        $game = new BMGame(424242, array(123, 456));
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -9069,7 +9525,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2 = new BMButton;
         $button2->load('(1) (1,1)');
 
-        $game = new BMGame(424242, array(123, 456));
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -9123,7 +9579,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2 = new BMButton;
         $button2->load('(2)');
 
-        $game = new BMGame(424242, array(123, 456));
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -9161,7 +9617,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2 = new BMButton;
         $button2->load('(1) p(1)');
 
-        $game = new BMGame(424242, array(123, 456));
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -9201,7 +9657,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2 = new BMButton;
         $button2->load('(20)');
 
-        $game = new BMGame(424242, array(123, 456));
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -9234,7 +9690,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2 = new BMButton;
         $button2->load('(20) (30)');
 
-        $game = new BMGame(424242, array(123, 456));
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -9267,6 +9723,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->update_game_state();
 
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING_FOR_TRIP, $game->gameState);
+        $game->do_next_step();
+        $game->update_game_state();
+
         $this->assertEquals(BMGameState::ADJUST_FIRE_DICE, $game->gameState);
         $this->assertNull($game->firingAmount);
         $this->assertTrue($game->activeDieArrayArray[0][0]->has_flag('IsAttacker'));
@@ -9290,7 +9750,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(10, $game->firingAmount);
 
         $game->do_next_step();
+        $game->update_game_state();
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING, $game->gameState);
 
+        $game->do_next_step();
         $game->update_game_state();
         $this->assertEquals(BMGameState::END_TURN, $game->gameState);
 
@@ -9320,7 +9783,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $button2 = new BMButton;
         $button2->load('(20) (30)');
 
-        $game = new BMGame(424242, array(123, 456));
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -9352,6 +9815,10 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         // test that a valid turndown is possible
         $game->attack = array(0, 1, array(0, 1, 2), array(0), 'Skill');
         $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->update_game_state();
+
+        $this->assertEquals(BMGameState::CHOOSE_TURBO_SWING_FOR_TRIP, $game->gameState);
+        $game->do_next_step();
         $game->update_game_state();
 
         $this->assertEquals(BMGameState::ADJUST_FIRE_DICE, $game->gameState);
@@ -9419,7 +9886,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
                             $button2->dieArray[3]->hookList['attack_list']);
 
         // load game
-        $game = new BMGame(535353, array(234, 567), array('', ''), 2);
+        $game = $this->object;
         $game->buttonArray = array($button1, $button2);
         $game->waitingOnActionArray = array(FALSE, FALSE);
         $game->proceed_to_next_user_action();
@@ -9430,7 +9897,7 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals(BMGameState::START_TURN, $game->gameState);
         $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
         $this->assertEquals(0, $game->activePlayerIdx);
-        $this->assertEquals(0, $game->playerWithInitiative);
+        $this->assertEquals(0, $game->playerWithInitiativeIdx);
         $this->assertEquals(1, $game->activeDieArrayArray[0][0]->max);
         $this->assertEquals(1, $game->activeDieArrayArray[0][1]->max);
         $this->assertEquals(1, $game->activeDieArrayArray[0][2]->max);
@@ -9531,5 +9998,707 @@ class BMGameTest extends PHPUnit_Framework_TestCase {
         $this->assertCount(1, $game->activeDieArrayArray[1]);
         $this->assertCount(3, $game->capturedDieArrayArray[0]);
         $this->assertCount(1, $game->capturedDieArrayArray[1]);
+    }
+
+    public function test_Dead_Guy() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('(1)', 'TestButton1');
+        $this->assertEquals('(1)', $button1->recipe);
+        // check dice in $button1->dieArray are correct
+        $this->assertCount(1, $button1->dieArray);
+        $this->assertEquals(1, $button1->dieArray[0]->max);
+
+        $button2 = new BMButton;
+        $button2->load('(0) (0) (0) (0) (0)', 'Dead Guy');
+        $this->assertEquals('(0) (0) (0) (0) (0)', $button2->recipe);
+        // check dice in $button2->dieArray are correct
+        $this->assertCount(5, $button2->dieArray);
+        $this->assertEquals(0, $button2->dieArray[0]->min);
+        $this->assertEquals(0, $button2->dieArray[1]->min);
+        $this->assertEquals(0, $button2->dieArray[2]->min);
+        $this->assertEquals(0, $button2->dieArray[3]->min);
+        $this->assertEquals(0, $button2->dieArray[4]->min);
+        $this->assertEquals(0, $button2->dieArray[0]->max);
+        $this->assertEquals(0, $button2->dieArray[1]->max);
+        $this->assertEquals(0, $button2->dieArray[2]->max);
+        $this->assertEquals(0, $button2->dieArray[3]->max);
+        $this->assertEquals(0, $button2->dieArray[4]->max);
+
+        // load game
+        $game = $this->object;
+        $game->buttonArray = array($button1, $button2);
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+
+        $this->assertEquals(1, $game->playerWithInitiativeIdx);
+        $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
+    }
+
+    /**
+     * @coversNothing
+     */
+    public function test_boom_round() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('b(1) b(30) b(1) (1)', 'TestButton1');
+        $this->assertEquals('b(1) b(30) b(1) (1)', $button1->recipe);
+        // check dice in $button1->dieArray are correct
+        $this->assertCount(4, $button1->dieArray);
+        $this->assertEquals(1, $button1->dieArray[0]->max);
+        $this->assertEquals(30, $button1->dieArray[1]->max);
+        $this->assertEquals(1, $button1->dieArray[2]->max);
+        $this->assertEquals(1, $button1->dieArray[3]->max);
+
+        $this->assertEquals(array('attack_list', 'pre_capture'),
+                            array_keys($button1->dieArray[0]->hookList));
+        $this->assertEquals(array('BMSkillBoom'),
+                            $button1->dieArray[0]->hookList['attack_list']);
+        $this->assertEquals(array('BMSkillBoom'),
+                            $button1->dieArray[0]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'pre_capture'),
+                            array_keys($button1->dieArray[1]->hookList));
+        $this->assertEquals(array('BMSkillBoom'),
+                            $button1->dieArray[1]->hookList['attack_list']);
+        $this->assertEquals(array('BMSkillBoom'),
+                            $button1->dieArray[1]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'pre_capture'),
+                            array_keys($button1->dieArray[2]->hookList));
+        $this->assertEquals(array('BMSkillBoom'),
+                            $button1->dieArray[2]->hookList['attack_list']);
+        $this->assertEquals(array('BMSkillBoom'),
+                            $button1->dieArray[2]->hookList['pre_capture']);
+
+        $button2 = new BMButton;
+        $button2->load('(2) (4)', 'TestButton2');
+        $this->assertEquals('(2) (4)', $button2->recipe);
+        // check dice in $button2->dieArray are correct
+        $this->assertCount(2, $button2->dieArray);
+        $this->assertEquals(2, $button2->dieArray[0]->max);
+        $this->assertEquals(4, $button2->dieArray[1]->max);
+
+        // load game
+        $game = $this->object;
+        $this->assertEquals(BMGameState::START_GAME, $game->gameState);
+        $this->assertEquals(2, $game->maxWins);
+        $game->buttonArray = array($button1, $button2);
+        $this->assertEquals($game, $game->buttonArray[0]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[1]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[0]->dieArray[0]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[0]->dieArray[1]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[0]->dieArray[2]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[1]->dieArray[0]->ownerObject);
+        $this->assertEquals($game, $game->buttonArray[1]->dieArray[1]->ownerObject);
+
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(array(), array()), $game->capturedDieArrayArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][0]->max);
+        $this->assertEquals(30,  $game->activeDieArrayArray[0][1]->max);
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][2]->max);
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][3]->max);
+        $this->assertEquals(2,  $game->activeDieArrayArray[1][0]->max);
+        $this->assertEquals(4, $game->activeDieArrayArray[1][1]->max);
+
+        $this->assertNotNull($game->activeDieArrayArray[0][0]->value);
+        $this->assertNotNull($game->activeDieArrayArray[0][1]->value);
+        $this->assertNotNull($game->activeDieArrayArray[0][2]->value);
+        $this->assertNotNull($game->activeDieArrayArray[0][3]->value);
+        $this->assertNotNull($game->activeDieArrayArray[1][0]->value);
+        $this->assertNotNull($game->activeDieArrayArray[1][1]->value);
+
+        $this->assertEquals(array('attack_list', 'pre_capture'),
+                            array_keys($game->activeDieArrayArray[0][0]->hookList));
+        $this->assertEquals(array('BMSkillBoom'),
+                            $game->activeDieArrayArray[0][0]->hookList['attack_list']);
+        $this->assertEquals(array('BMSkillBoom'),
+                            $game->activeDieArrayArray[0][0]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'pre_capture'),
+                            array_keys($game->activeDieArrayArray[0][1]->hookList));
+        $this->assertEquals(array('BMSkillBoom'),
+                            $game->activeDieArrayArray[0][1]->hookList['attack_list']);
+        $this->assertEquals(array('BMSkillBoom'),
+                            $game->activeDieArrayArray[0][1]->hookList['pre_capture']);
+        $this->assertEquals(array('attack_list', 'pre_capture'),
+                            array_keys($game->activeDieArrayArray[0][2]->hookList));
+        $this->assertEquals(array('BMSkillBoom'),
+                            $game->activeDieArrayArray[0][2]->hookList['attack_list']);
+        $this->assertEquals(array('BMSkillBoom'),
+                            $game->activeDieArrayArray[0][2]->hookList['pre_capture']);
+
+        // check that player 0 always wins initiative
+        $this->assertEquals(0, $game->playerWithInitiativeIdx);
+        $this->assertEquals(0, $game->activePlayerIdx);
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+
+        // artificially set die values
+        // b(1) b(30) b(1) (1) showing 1, 18, 1, 1
+        // (2) (4) showing 2, 3
+        $activeDieArrayArray = $game->activeDieArrayArray;
+        $this->assertEquals(1, $activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $activeDieArrayArray[0][2]->value);
+        $activeDieArrayArray[0][1]->value = 18;
+        $activeDieArrayArray[1][0]->value = 2;
+        $activeDieArrayArray[1][1]->value = 3;
+
+        // check that normal dice cannot perform boom attacks
+        $game->attack = array(0,        // attackerPlayerIdx
+                              1,        // defenderPlayerIdx
+                              array(3), // attackerAttackDieIdxArray
+                              array(0), // defenderAttackDieIdxArray
+                              'Boom'); // attackType
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(4, $game->activeDieArrayArray[0]);
+        $this->assertCount(2, $game->activeDieArrayArray[1]);
+        $this->assertCount(0, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+
+        // check that boom dice can perform a skill attack
+        // results in:
+        // b(1) b(30) b(1) (1) showing 1, 18, 1, 1
+        // (4) showing 3
+        $game->attack = array(0,           // attackerPlayerIdx
+                              1,           // defenderPlayerIdx
+                              array(0, 2), // attackerAttackDieIdxArray
+                              array(0),    // defenderAttackDieIdxArray
+                              'Skill');    // attackType
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(4, $game->activeDieArrayArray[0]);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(18, $game->activeDieArrayArray[0][1]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][2]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][3]->value);
+        $this->assertCount(1, $game->activeDieArrayArray[1]);
+        $this->assertEquals(3, $game->activeDieArrayArray[1][0]->value);
+        $this->assertCount(1, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+        $this->assertEquals(2, $game->capturedDieArrayArray[0][0]->max);
+        $this->assertEquals(2, $game->capturedDieArrayArray[0][0]->value);
+
+        // perform power attack
+        // results in
+        // b(1) b(30) (1) showing 1, 18, 1
+        // (4) showing 2
+        $game->attack = array(1,        // attackerPlayerIdx
+                              0,        // defenderPlayerIdx
+                              array(0), // attackerAttackDieIdxArray
+                              array(2), // defenderAttackDieIdxArray
+                              'Power'); // attackType
+
+        global $BM_RAND_VALS;
+        $BM_RAND_VALS = array(2);
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(3, $game->activeDieArrayArray[0]);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(18, $game->activeDieArrayArray[0][1]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][2]->value);
+        $this->assertCount(1, $game->activeDieArrayArray[1]);
+        $this->assertEquals(2, $game->activeDieArrayArray[1][0]->value);
+        $this->assertCount(1, $game->capturedDieArrayArray[0]);
+        $this->assertCount(1, $game->capturedDieArrayArray[1]);
+
+        // perform boom attack
+        // results in:
+        // b(1) (1) showing 1, 1
+        // (4) showing 3
+        $game->attack = array(0,           // attackerPlayerIdx
+                              1,           // defenderPlayerIdx
+                              array(1),    // attackerAttackDieIdxArray
+                              array(0),    // defenderAttackDieIdxArray
+                              'Boom');     // attackType
+
+        $BM_RAND_VALS = array(3);
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(2, $game->activeDieArrayArray[0]);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][1]->value);
+        $this->assertCount(1, $game->activeDieArrayArray[1]);
+        $this->assertEquals(3, $game->activeDieArrayArray[1][0]->value);
+        $this->assertCount(1, $game->capturedDieArrayArray[0]);
+        $this->assertCount(1, $game->capturedDieArrayArray[1]);
+        $this->assertCount(1, $game->outOfPlayDieArrayArray[0]);
+        $this->assertEquals(18, $game->outOfPlayDieArrayArray[0][0]->value);
+        $this->assertEmpty($game->outOfPlayDieArrayArray[1]);
+
+        // perform power attack
+        // results in:
+        // b(1) showing 1
+        // (4) showing 3
+        $game->attack = array(1,           // attackerPlayerIdx
+                              0,           // defenderPlayerIdx
+                              array(0),    // attackerAttackDieIdxArray
+                              array(1),    // defenderAttackDieIdxArray
+                              'Power');    // attackType
+
+        $BM_RAND_VALS = array(1);
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(1, $game->roundNumber);
+
+        // check that boom dice can perform a power attack
+        // ends the round
+        $game->attack = array(0,           // attackerPlayerIdx
+                              1,           // defenderPlayerIdx
+                              array(0),    // attackerAttackDieIdxArray
+                              array(0),    // defenderAttackDieIdxArray
+                              'Power');    // attackType
+        $game->proceed_to_next_user_action();
+
+        $this->assertEquals(2, $game->roundNumber);
+    }
+
+    /**
+     * @coversNothing
+     */
+    public function test_boom_with_capture_skills_round() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('bn(1) bv(30) b(1) (1)', 'TestButton1');
+        $this->assertEquals('bn(1) bv(30) b(1) (1)', $button1->recipe);
+        // check dice in $button1->dieArray are correct
+        $this->assertCount(4, $button1->dieArray);
+        $this->assertEquals(1, $button1->dieArray[0]->max);
+        $this->assertEquals(30, $button1->dieArray[1]->max);
+        $this->assertEquals(1, $button1->dieArray[2]->max);
+        $this->assertEquals(1, $button1->dieArray[3]->max);
+
+        $button2 = new BMButton;
+        $button2->load('b%(1) bm(30) (1)', 'TestButton2');
+        $this->assertEquals('b%(1) bm(30) (1)', $button2->recipe);
+        // check dice in $button2->dieArray are correct
+        $this->assertCount(3, $button2->dieArray);
+        $this->assertEquals(1, $button2->dieArray[0]->max);
+        $this->assertEquals(30, $button2->dieArray[1]->max);
+        $this->assertEquals(1, $button2->dieArray[2]->max);
+
+        // load game
+        $game = $this->object;
+        $this->assertEquals(BMGameState::START_GAME, $game->gameState);
+        $this->assertEquals(2, $game->maxWins);
+        $game->buttonArray = array($button1, $button2);
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(array(), array()), $game->capturedDieArrayArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+
+        // check that player 0 always wins initiative
+        $this->assertEquals(0, $game->playerWithInitiativeIdx);
+        $this->assertEquals(0, $game->activePlayerIdx);
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+
+        // artificially set die values
+        // bn(1) bv(30) b(1) (1) showing 1, 18, 1, 1
+        // b%(1) bm(30) (1) showing 1, 15, 1
+        $activeDieArrayArray = $game->activeDieArrayArray;
+        $this->assertEquals(1, $activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $activeDieArrayArray[0][2]->value);
+        $this->assertEquals(1, $activeDieArrayArray[1][0]->value);
+        $this->assertEquals(1, $activeDieArrayArray[1][2]->value);
+        $activeDieArrayArray[0][1]->value = 18;
+        $activeDieArrayArray[1][1]->value = 15;
+
+        // check that boom attacks do not impart null
+        // results in:
+        // bv(30) b(1) (1) showing 18, 1, 1
+        // b%(1) bm(30) (1) showing 1, 15, 1
+        $game->attack = array(0,           // attackerPlayerIdx
+                              1,           // defenderPlayerIdx
+                              array(0),    // attackerAttackDieIdxArray
+                              array(2),    // defenderAttackDieIdxArray
+                              'Boom');     // attackType
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(3, $game->activeDieArrayArray[0]);
+        $this->assertEquals(18, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][1]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][2]->value);
+        $this->assertCount(3, $game->activeDieArrayArray[1]);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][0]->value);
+        $this->assertEquals(15, $game->activeDieArrayArray[1][1]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][2]->value);
+        $this->assertFalse($game->activeDieArrayArray[1][2]->has_skill('Null'));
+        $this->assertCount(0, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+        $this->assertCount(1, $game->outOfPlayDieArrayArray[0]);
+        $this->assertCount(0, $game->outOfPlayDieArrayArray[1]);
+        $this->assertEquals(1, $game->outOfPlayDieArrayArray[0][0]->max);
+        $this->assertEquals(1, $game->outOfPlayDieArrayArray[0][0]->value);
+        $this->assertTrue($game->outOfPlayDieArrayArray[0][0]->has_skill('Boom'));
+        $this->assertTrue($game->outOfPlayDieArrayArray[0][0]->has_skill('Null'));
+
+        // check that boom attacks do not trigger morphing
+        // results in:
+        // bv(30) b(1) (1) showing 18, 1, 1
+        // b%(1) (1) showing 1, 1
+        $game->attack = array(1,           // attackerPlayerIdx
+                              0,           // defenderPlayerIdx
+                              array(1),    // attackerAttackDieIdxArray
+                              array(2),    // defenderAttackDieIdxArray
+                              'Boom');     // attackType
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(3, $game->activeDieArrayArray[0]);
+        $this->assertEquals(18, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][1]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][2]->value);
+        $this->assertCount(2, $game->activeDieArrayArray[1]);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][1]->value);
+        $this->assertCount(0, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+        $this->assertCount(1, $game->outOfPlayDieArrayArray[0]);
+        $this->assertCount(1, $game->outOfPlayDieArrayArray[1]);
+        $this->assertEquals(30, $game->outOfPlayDieArrayArray[1][0]->max);
+        $this->assertEquals(15, $game->outOfPlayDieArrayArray[1][0]->value);
+        $this->assertTrue($game->outOfPlayDieArrayArray[1][0]->has_skill('Boom'));
+        $this->assertTrue($game->outOfPlayDieArrayArray[1][0]->has_skill('Morphing'));
+
+        // check that boom attacks do not impart value and do not split when targeting
+        // radioactive dice
+        // results in:
+        // b(1) (1) showing 1, 1
+        // b%(1) (1) showing 1, 1
+        $game->attack = array(0,           // attackerPlayerIdx
+                              1,           // defenderPlayerIdx
+                              array(0),    // attackerAttackDieIdxArray
+                              array(0),    // defenderAttackDieIdxArray
+                              'Boom');     // attackType
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(2, $game->activeDieArrayArray[0]);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][1]->value);
+        $this->assertCount(2, $game->activeDieArrayArray[1]);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][1]->value);
+        $this->assertFalse($game->activeDieArrayArray[1][0]->has_skill('Value'));
+        $this->assertCount(0, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+        $this->assertCount(2, $game->outOfPlayDieArrayArray[0]);
+        $this->assertCount(1, $game->outOfPlayDieArrayArray[1]);
+        $this->assertEquals(30, $game->outOfPlayDieArrayArray[0][1]->max);
+        $this->assertEquals(18, $game->outOfPlayDieArrayArray[0][1]->value);
+        $this->assertTrue($game->outOfPlayDieArrayArray[0][1]->has_skill('Boom'));
+        $this->assertTrue($game->outOfPlayDieArrayArray[0][1]->has_skill('Value'));
+
+        // check that boom attacks do not split when attacking with radioactive
+        // results in:
+        // b(1) (1) showing 1, 1
+        // (1) showing 1
+        $game->attack = array(1,           // attackerPlayerIdx
+                              0,           // defenderPlayerIdx
+                              array(0),    // attackerAttackDieIdxArray
+                              array(1),    // defenderAttackDieIdxArray
+                              'Boom');     // attackType
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(2, $game->activeDieArrayArray[0]);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][1]->value);
+        $this->assertCount(1, $game->activeDieArrayArray[1]);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][0]->value);
+        $this->assertCount(0, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+        $this->assertCount(2, $game->outOfPlayDieArrayArray[0]);
+        $this->assertCount(2, $game->outOfPlayDieArrayArray[1]);
+        $this->assertEquals(1, $game->outOfPlayDieArrayArray[1][1]->max);
+        $this->assertEquals(1, $game->outOfPlayDieArrayArray[1][1]->value);
+        $this->assertTrue($game->outOfPlayDieArrayArray[1][1]->has_skill('Boom'));
+        $this->assertTrue($game->outOfPlayDieArrayArray[1][1]->has_skill('Radioactive'));
+    }
+
+    /**
+     * @coversNothing
+     */
+    public function test_boom_with_size_and_reroll_skills_round() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('bH(1) bo(30) b(1) (1)', 'TestButton1');
+        $this->assertEquals('bH(1) bo(30) b(1) (1)', $button1->recipe);
+        // check dice in $button1->dieArray are correct
+        $this->assertCount(4, $button1->dieArray);
+        $this->assertEquals(1, $button1->dieArray[0]->max);
+        $this->assertEquals(30, $button1->dieArray[1]->max);
+        $this->assertEquals(1, $button1->dieArray[2]->max);
+        $this->assertEquals(1, $button1->dieArray[3]->max);
+
+        $button2 = new BMButton;
+        $button2->load('b(X)? bh(30) (1)', 'TestButton2');
+        $this->assertEquals('b(X)? bh(30) (1)', $button2->recipe);
+        // check dice in $button2->dieArray are correct
+        $this->assertCount(3, $button2->dieArray);
+        $this->assertNull($button2->dieArray[0]->max);
+        $this->assertEquals(30, $button2->dieArray[1]->max);
+        $this->assertEquals(1, $button2->dieArray[2]->max);
+
+        // load game
+        $game = $this->object;
+        $this->assertEquals(BMGameState::START_GAME, $game->gameState);
+        $this->assertEquals(2, $game->maxWins);
+        $game->buttonArray = array($button1, $button2);
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(array(), array()), $game->capturedDieArrayArray);
+        $this->assertEquals(BMGameState::SPECIFY_DICE, $game->gameState);
+
+        $game->swingValueArrayArray = array(array(), array('X' => 5));
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertEquals(5, $game->activeDieArrayArray[1][0]->max);
+
+        // check that player 0 always wins initiative
+        $this->assertEquals(0, $game->playerWithInitiativeIdx);
+        $this->assertEquals(0, $game->activePlayerIdx);
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+
+        // artificially set die values
+        // bH(1) bo(30) b(1) (1) showing 1, 18, 1, 1
+        // b(X=5)? bh(30) (1) showing 3, 15, 1
+        $activeDieArrayArray = $game->activeDieArrayArray;
+        $this->assertEquals(1, $activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $activeDieArrayArray[0][2]->value);
+        $this->assertEquals(1, $activeDieArrayArray[1][2]->value);
+        $activeDieArrayArray[0][1]->value = 18;
+        $activeDieArrayArray[1][0]->value = 3;
+        $activeDieArrayArray[1][1]->value = 15;
+
+        // check that boom attacks do not allow late rerolls due to ornery
+        // results in:
+        // bH(1) b(1) (1) showing 1, 1, 1
+        // b(X=5)? bh(30) (1) showing 3, 15, 1
+        $game->attack = array(0,           // attackerPlayerIdx
+                              1,           // defenderPlayerIdx
+                              array(1),    // attackerAttackDieIdxArray
+                              array(2),    // defenderAttackDieIdxArray
+                              'Boom');     // attackType
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(3, $game->activeDieArrayArray[0]);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][1]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][2]->value);
+        $this->assertCount(3, $game->activeDieArrayArray[1]);
+        $this->assertEquals(3, $game->activeDieArrayArray[1][0]->value);
+        $this->assertEquals(15, $game->activeDieArrayArray[1][1]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][2]->value);
+        $this->assertCount(0, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+        $this->assertCount(1, $game->outOfPlayDieArrayArray[0]);
+        $this->assertCount(0, $game->outOfPlayDieArrayArray[1]);
+        $this->assertEquals(30, $game->outOfPlayDieArrayArray[0][0]->max);
+        $this->assertEquals(18, $game->outOfPlayDieArrayArray[0][0]->value);
+        $this->assertTrue($game->outOfPlayDieArrayArray[0][0]->has_skill('Boom'));
+        $this->assertTrue($game->outOfPlayDieArrayArray[0][0]->has_skill('Ornery'));
+
+        // check that boom attacks do not trigger weak
+        // results in:
+        // bH(1) b(1) (1) showing 1, 1, 1
+        // b(X=5)? (1) showing 3, 1
+        $game->attack = array(1,           // attackerPlayerIdx
+                              0,           // defenderPlayerIdx
+                              array(1),    // attackerAttackDieIdxArray
+                              array(2),    // defenderAttackDieIdxArray
+                              'Boom');     // attackType
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(3, $game->activeDieArrayArray[0]);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][1]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][2]->value);
+        $this->assertCount(2, $game->activeDieArrayArray[1]);
+        $this->assertEquals(3, $game->activeDieArrayArray[1][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][1]->value);
+        $this->assertCount(0, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+        $this->assertCount(1, $game->outOfPlayDieArrayArray[0]);
+        $this->assertCount(1, $game->outOfPlayDieArrayArray[1]);
+        $this->assertEquals(30, $game->outOfPlayDieArrayArray[1][0]->max);
+        $this->assertEquals(15, $game->outOfPlayDieArrayArray[1][0]->value);
+        $this->assertTrue($game->outOfPlayDieArrayArray[1][0]->has_skill('Boom'));
+        $this->assertTrue($game->outOfPlayDieArrayArray[1][0]->has_skill('Weak'));
+
+        // check that boom attacks do not trigger mighty
+        // results in:
+        // b(1) (1) showing 1, 1
+        // b(X=5)? (1) showing 3, 1
+        $game->attack = array(0,           // attackerPlayerIdx
+                              1,           // defenderPlayerIdx
+                              array(0),    // attackerAttackDieIdxArray
+                              array(1),    // defenderAttackDieIdxArray
+                              'Boom');     // attackType
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(2, $game->activeDieArrayArray[0]);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][1]->value);
+        $this->assertCount(2, $game->activeDieArrayArray[1]);
+        $this->assertEquals(3, $game->activeDieArrayArray[1][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][1]->value);
+        $this->assertCount(0, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+        $this->assertCount(2, $game->outOfPlayDieArrayArray[0]);
+        $this->assertCount(1, $game->outOfPlayDieArrayArray[1]);
+        $this->assertEquals(1, $game->outOfPlayDieArrayArray[0][1]->max);
+        $this->assertEquals(1, $game->outOfPlayDieArrayArray[0][1]->value);
+        $this->assertTrue($game->outOfPlayDieArrayArray[0][1]->has_skill('Boom'));
+        $this->assertTrue($game->outOfPlayDieArrayArray[0][1]->has_skill('Mighty'));
+
+        // check that boom attacks do not trigger Mood Swing
+        // results in:
+        // b(1) (1) showing 1, 1
+        // (1) showing 1
+        $game->attack = array(1,           // attackerPlayerIdx
+                              0,           // defenderPlayerIdx
+                              array(0),    // attackerAttackDieIdxArray
+                              array(1),    // defenderAttackDieIdxArray
+                              'Boom');     // attackType
+
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(2, $game->activeDieArrayArray[0]);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1, $game->activeDieArrayArray[0][1]->value);
+        $this->assertCount(1, $game->activeDieArrayArray[1]);
+        $this->assertEquals(1, $game->activeDieArrayArray[1][0]->value);
+        $this->assertCount(0, $game->capturedDieArrayArray[0]);
+        $this->assertCount(0, $game->capturedDieArrayArray[1]);
+        $this->assertCount(2, $game->outOfPlayDieArrayArray[0]);
+        $this->assertCount(2, $game->outOfPlayDieArrayArray[1]);
+        $this->assertEquals(5, $game->outOfPlayDieArrayArray[1][1]->max);
+        $this->assertEquals(3, $game->outOfPlayDieArrayArray[1][1]->value);
+        $this->assertTrue($game->outOfPlayDieArrayArray[1][1]->has_skill('Boom'));
+        $this->assertTrue($game->outOfPlayDieArrayArray[1][1]->has_skill('Mood'));
+    }
+
+    /**
+     * @coversNothing
+     */
+    public function test_multiple_rage_capture() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('G(1) G(1) G(1) (1)', 'TestButton1');
+        $this->assertEquals('G(1) G(1) G(1) (1)', $button1->recipe);
+        // check dice in $button1->dieArray are correct
+        $this->assertCount(4, $button1->dieArray);
+        $this->assertEquals(1, $button1->dieArray[0]->max);
+        $this->assertEquals(1, $button1->dieArray[1]->max);
+        $this->assertEquals(1, $button1->dieArray[2]->max);
+        $this->assertEquals(1, $button1->dieArray[3]->max);
+
+        $button2 = new BMButton;
+        $button2->load('(1) (1) (1) (1) zM(3)', 'TestButton2');
+        $this->assertEquals('(1) (1) (1) (1) zM(3)', $button2->recipe);
+        // check dice in $button2->dieArray are correct
+        $this->assertCount(5, $button2->dieArray);
+        $this->assertEquals(1, $button2->dieArray[0]->max);
+        $this->assertEquals(1, $button2->dieArray[1]->max);
+        $this->assertEquals(1, $button2->dieArray[2]->max);
+        $this->assertEquals(1, $button2->dieArray[3]->max);
+        $this->assertEquals(3, $button2->dieArray[4]->max);
+
+        // load game
+        $game = $this->object;
+        $this->assertEquals(BMGameState::START_GAME, $game->gameState);
+        $game->buttonArray = array($button1, $button2);
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][0]->max);
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][1]->max);
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][2]->max);
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][3]->max);
+        $this->assertEquals(1,  $game->activeDieArrayArray[1][0]->max);
+        $this->assertEquals(1,  $game->activeDieArrayArray[1][1]->max);
+        $this->assertEquals(1,  $game->activeDieArrayArray[1][2]->max);
+        $this->assertEquals(1,  $game->activeDieArrayArray[1][3]->max);
+        $this->assertEquals(3,  $game->activeDieArrayArray[1][4]->max);
+
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][0]->value);
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][1]->value);
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][2]->value);
+        $this->assertEquals(1,  $game->activeDieArrayArray[0][3]->value);
+        $this->assertEquals(1,  $game->activeDieArrayArray[1][0]->value);
+        $this->assertEquals(1,  $game->activeDieArrayArray[1][1]->value);
+        $this->assertEquals(1,  $game->activeDieArrayArray[1][2]->value);
+        $this->assertEquals(1,  $game->activeDieArrayArray[1][3]->value);
+        $this->assertEquals(3,  $game->activeDieArrayArray[1][4]->value);
+
+        // check that player 1 always wins initiative
+        $this->assertEquals(1, $game->playerWithInitiativeIdx);
+        $this->assertEquals(1, $game->activePlayerIdx);
+        $this->assertEquals(array(FALSE, TRUE), $game->waitingOnActionArray);
+
+        $game->attack = array(1,        // attackerPlayerIdx
+                              0,        // defenderPlayerIdx
+                              array(4), // attackerAttackDieIdxArray
+                              array(0, 1, 2), // defenderAttackDieIdxArray
+                              'Speed'); // attackType
+
+        $game->proceed_to_next_user_action();
+
+        $this->assertEquals(array(TRUE, FALSE), $game->waitingOnActionArray);
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertCount(4, $game->activeDieArrayArray[0]);
+        $this->assertCount(5, $game->activeDieArrayArray[1]);
+        $this->assertCount(0, $game->capturedDieArrayArray[0]);
+        $this->assertCount(3, $game->capturedDieArrayArray[1]);
+    }
+
+    /**
+     * @coversNothing
+     */
+    public function test_echo_RandomBM() {
+        // load buttons
+        $button1 = new BMButton;
+        $button1->load('', 'Echo');
+        $this->assertEquals('', $button1->recipe);
+        // check dice in $button1->dieArray are correct
+        $this->assertCount(0, $button1->dieArray);
+
+        $button2 = new BMButton;
+        $button2->load('', 'RandomBMAnime');
+        $this->assertEquals('', $button2->recipe);
+        // check dice in $button2->dieArray are correct
+        $this->assertCount(0, $button2->dieArray);
+
+        // load game
+        $game = $this->object;
+        $this->assertEquals(BMGameState::START_GAME, $game->gameState);
+        $game->buttonArray = array($button1, $button2);
+        $game->waitingOnActionArray = array(FALSE, FALSE);
+        $game->proceed_to_next_user_action();
+
+        $this->assertEquals(BMGameState::START_TURN, $game->gameState);
+        $this->assertNotEquals('', $game->playerArray[0]->button->recipe);
+        $this->assertEquals($game->playerArray[0]->button->recipe,
+                            $game->playerArray[1]->button->recipe);
+        $this->assertCount(4, $game->playerArray[0]->activeDieArray);
+        $this->assertCount(4, $game->playerArray[1]->activeDieArray);
     }
 }

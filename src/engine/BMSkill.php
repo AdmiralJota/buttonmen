@@ -67,7 +67,7 @@ class BMSkill {
      * @param string $skillLetter
      * @return string
      */
-    private static function expand_skill_letter($skillLetter) {
+    protected static function expand_skill_letter($skillLetter) {
         $skillLetter = array_search(
             $skillLetter,
             BMSkill::skill_name_abbreviation_mapping()
@@ -108,27 +108,45 @@ class BMSkill {
     protected static function skill_name_abbreviation_mapping() {
         return array('Auxiliary'    => '+',
                      'Berserk'      => 'B',
+                     'Boom'         => 'b',
                      'Chance'       => 'c',
                      'Doppelganger' => 'D',
                      'Fire'         => 'F',
                      'Focus'        => 'f',
+                     'Insult'       => 'I',
                      'Konstant'     => 'k',
                      'Mad'          => '&',
                      'Maximum'      => 'M',
+                     'Mighty'       => 'H',
                      'Mood'         => '?',
                      'Morphing'     => 'm',
                      'Null'         => 'n',
                      'Ornery'       => 'o',
                      'Poison'       => 'p',
                      'Queer'        => 'q',
+                     'Radioactive'  => '%',
+                     'Rage'         => 'G',
                      'Reserve'      => 'r',
                      'Shadow'       => 's',
                      'Slow'         => 'w',
                      'Speed'        => 'z',
                      'Stealth'      => 'd',
                      'Stinger'      => 'g',
+                     'TimeAndSpace' => '^',
                      'Trip'         => 't',
-                     'Value'        => 'v');
+                     'Turbo'        => '!',
+                     'Value'        => 'v',
+                     'Warrior'      => '`',
+                     'Weak'         => 'h');
+    }
+
+    /**
+     * All possible skill characters
+     *
+     * @return array
+     */
+    public static function all_skill_chars() {
+        return array_values(self::skill_name_abbreviation_mapping());
     }
 
     /**
@@ -138,6 +156,7 @@ class BMSkill {
      */
     public static function attack_types() {
         return array(// skill related attack types
+                     'Boom',
                      'Berserk',
                      'Konstant',
                      'Null',
@@ -155,7 +174,7 @@ class BMSkill {
     /**
      * Attack types incompatible with this skill type
      *
-     * @return string
+     * @return array
      */
     public static function incompatible_attack_types() {
         return array();
@@ -202,24 +221,33 @@ class BMSkill {
                      'BMSkillReserve',
                      'BMSkillChance',
                      'BMSkillFocus',
+                     'BMSkillBoom',
+                     'BMSkillRage',
+                     'BMSkillSpeed',
+                     'BMSkillTrip',
                      'BMSkillQueer',
                      'BMSkillBerserk',
-                     'BMSkillSpeed',
                      'BMSkillShadow',
                      'BMSkillSlow',
-                     'BMSkillTrip',
                      'BMSkillStinger',
+                     'BMSkillFire',
                      'BMSkillStealth',
                      'BMSkillOrnery',
                      'BMSkillMood',
                      'BMSkillMad',
+                     'BMSkillKonstant',
+                     'BMSkillMorphing',
+                     'BMSkillRadioactive',
+                     'BMSkillWeak',
+                     'BMSkillMighty',
                      'BMSkillDoppelganger',
                      'BMSkillValue',
                      'BMSkillPoison',
                      'BMSkillNull',
-                     'BMSkillKonstant',
-                     'BMSkillMorphing',
-                     'BMSkillMaximum');
+                     'BMSkillMaximum',
+                     'BMSkillTimeAndSpace',
+                     'BMSkillWarrior',
+                     'BMSkillInsult');
         // fires last
     }
 
@@ -287,5 +315,52 @@ class BMSkill {
      */
     public static function prevents_win_determination() {
         return FALSE;
+    }
+
+    /**
+     * Return the single defender die, taking into account that rage may add
+     * an extra die that is not captured
+     *
+     * @param array $defenderArray
+     * @param bool $allowOnlyOneDef
+     * @return BMDie
+     */
+    protected static function get_single_defender(array $defenderArray, $allowOnlyOneDef) {
+        if ($allowOnlyOneDef && !self::has_single_defender($defenderArray)) {
+            throw new LogicException('Exactly one defender expected');
+        }
+
+        $defender = NULL;
+
+        foreach ($defenderArray as &$def) {
+            if ($def->captured) {
+                $defender = &$def;
+                break;
+            }
+        }
+
+        if (is_null($defender)) {
+            throw new LogicException('No defender found');
+        }
+
+        return $defender;
+    }
+
+    /**
+     * Checks whether there is exactly one defender
+     *
+     * @param array $defenderArray
+     * @return bool
+     */
+    protected static function has_single_defender(array $defenderArray) {
+        // exclude new defenders that have been added because of Rage
+        $defCount = 0;
+        foreach ($defenderArray as &$def) {
+            if (!($def->has_flag('IsRageTargetReplacement'))) {
+                $defCount++;
+            }
+        }
+
+        return (1 == $defCount);
     }
 }

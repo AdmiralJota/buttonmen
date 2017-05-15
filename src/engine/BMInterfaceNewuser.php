@@ -22,16 +22,32 @@ class BMInterfaceNewuser {
     const EMAIL_MAX_LENGTH = 254;
 
     // properties
-    private $message;               // message intended for GUI
-//    private $timestamp;             // timestamp of last game action
-    private static $conn = NULL;    // connection to database
 
-    private $isTest;         // indicates if the interface is for testing
+    /**
+     * Message intended for GUI
+     *
+     * @var string
+     */
+    private $message;
+
+    /**
+     * Connection to database
+     *
+     * @var PDO
+     */
+    private static $conn = NULL;
+
+    /**
+     * Indicates if the interface is for testing
+     *
+     * @var bool
+     */
+    private $isTest;
 
     /**
      * Constructor
      *
-     * @param boolean $isTest
+     * @param bool $isTest
      */
     public function __construct($isTest = FALSE) {
         if (!is_bool($isTest)) {
@@ -54,6 +70,14 @@ class BMInterfaceNewuser {
 
     // methods
 
+    /**
+     * Create a new user
+     *
+     * @param string $username
+     * @param string $password
+     * @param string $email
+     * @return NULL|array
+     */
     public function create_user($username, $password, $email) {
         try {
             if (strlen($username) > BMInterfaceNewuser::USERNAME_MAX_LENGTH) {
@@ -150,6 +174,13 @@ class BMInterfaceNewuser {
         }
     }
 
+    /**
+     * Verify a user on first login using the verification key sent by email
+     *
+     * @param int $playerId
+     * @param string $playerKey
+     * @return bool
+     */
     public function verify_user($playerId, $playerKey) {
         try {
             // Check for a user with this id
@@ -205,6 +236,13 @@ class BMInterfaceNewuser {
         }
     }
 
+    /**
+     * Create and send email allowing new users to login for the first time
+     *
+     * @param int $playerId
+     * @param string $username
+     * @param string $playerEmail
+     */
     public function send_email_verification($playerId, $username, $playerEmail) {
 
         // a given player should only have one verification code at a time, so delete any old ones
@@ -213,7 +251,7 @@ class BMInterfaceNewuser {
         $statement->execute(array(':playerId' => $playerId));
 
         // generate a new verification code and insert it into the table
-        $playerKey = md5(mt_rand());
+        $playerKey = md5(bm_rand());
         if (isset($_SERVER) && array_key_exists('REMOTE_ADDR', $_SERVER)) {
             $ipaddr = $_SERVER['REMOTE_ADDR'];
         } else {

@@ -9,18 +9,33 @@
  * This class contains code specific to speed attacks
  */
 class BMAttackSpeed extends BMAttack {
+    /**
+     * Type of attack
+     *
+     * @var string
+     */
     public $type = 'Speed';
 
+    /**
+     * Determine if specified attack is valid.
+     *
+     * @param BMGame $game
+     * @param array $attackers
+     * @param array $defenders
+     * @return bool
+     */
     public function validate_attack($game, array $attackers, array $defenders) {
         $this->validationMessage = '';
 
         if (1 != count($attackers)) {
-            $this->validationMessage = 'There must be exactly one attacking die for a speed attack.';
+            $this->validationMessage = 'There must be exactly one attacking die for a ' .
+                                       strtolower($this->type). ' attack.';
             return FALSE;
         }
 
         if (count($defenders) < 1) {
-            $this->validationMessage = 'There must be at least one target die for a speed attack.';
+            $this->validationMessage = 'There must be at least one target die for a ' .
+                                       strtolower($this->type). ' attack.';
             return FALSE;
         }
 
@@ -47,7 +62,7 @@ class BMAttackSpeed extends BMAttack {
         }
 
         $canAttDoThisAttack =
-            $attacker->is_valid_attacker($this->type, $attackers);
+            $attacker->is_valid_attacker($attackers);
         if (!$canAttDoThisAttack) {
             $this->validationMessage = 'Invalid attacking die';
             return FALSE;
@@ -55,7 +70,7 @@ class BMAttackSpeed extends BMAttack {
 
         $areDefValidTargets = TRUE;
         foreach ($defenders as $defender) {
-            if (!($defender->is_valid_target($this->type, $defenders))) {
+            if (!($defender->is_valid_target($defenders))) {
                 $areDefValidTargets = FALSE;
                 break;
             }
@@ -68,7 +83,18 @@ class BMAttackSpeed extends BMAttack {
         return TRUE;
     }
 
-    public function find_attack($game) {
+    /**
+     * Determine if there is at least one valid attack of this type from
+     * the set of all possible attackers and defenders.
+     *
+     * If $includeOptional is FALSE, then optional attacks are excluded.
+     * These include skill attacks involving warrior dice.
+     *
+     * @param BMGame $game
+     * @param bool $includeOptional
+     * @return bool
+     */
+    public function find_attack($game, $includeOptional = TRUE) {
         return $this->search_onevmany(
             $game,
             $game->attackerAllDieArray,
@@ -76,6 +102,13 @@ class BMAttackSpeed extends BMAttack {
         );
     }
 
+    /**
+     * Check if skills are compatible with this type of attack.
+     *
+     * @param array $attArray
+     * @param array $defArray
+     * @return bool
+     */
     protected function are_skills_compatible(array $attArray, array $defArray) {
         if (1 != count($attArray)) {
             throw new InvalidArgumentException('attArray must have one element.');
@@ -85,27 +118,40 @@ class BMAttackSpeed extends BMAttack {
             throw new InvalidArgumentException('defArray must be nonempty.');
         }
 
-        $returnVal = TRUE;
-
         $att = $attArray[0];
 
         if ($att->has_skill('Stealth')) {
-            $this->validationMessage = 'Stealth dice cannot perform speed attacks.';
-            $returnVal =  FALSE;
+            $this->validationMessage = 'Stealth dice cannot perform ' .
+                                       strtolower($this->type). ' attacks.';
+            return FALSE;
         }
 
-        if (!$att->has_skill('Speed')) {
-            $this->validationMessage = 'Dice without speed cannot perform speed attacks.';
-            $returnVal = FALSE;
+        if ($att->has_skill('Warrior')) {
+            $this->validationMessage = 'Warrior dice cannot perform ' .
+                                       strtolower($this->type). ' attacks.';
+            return FALSE;
+        }
+
+        if (!$att->has_skill($this->type)) {
+            $this->validationMessage = 'Dice without ' .
+                                       strtolower($this->type). ' cannot perform ' .
+                                       strtolower($this->type). ' attacks.';
+            return FALSE;
         }
 
         foreach ($defArray as $def) {
             if ($def->has_skill('Stealth')) {
-                $this->validationMessage = 'Stealth dice cannot be attacked by speed attacks.';
-                $returnVal = FALSE;
+                $this->validationMessage = 'Stealth dice cannot be attacked by ' .
+                                           strtolower($this->type). ' attacks.';
+                return FALSE;
+            }
+
+            if ($def->has_skill('Warrior')) {
+                $this->validationMessage = 'Warrior dice cannot be attacked.';
+                return FALSE;
             }
         }
 
-        return $returnVal;
+        return TRUE;
     }
 }

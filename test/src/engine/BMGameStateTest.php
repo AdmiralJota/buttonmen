@@ -9,6 +9,10 @@ class BMGameStateTest extends PHPUnit_Framework_TestCase {
         $this->assertTrue(BMGameState::START_GAME <
                           BMGameState::APPLY_HANDICAPS);
         $this->assertTrue(BMGameState::APPLY_HANDICAPS <
+                          BMGameState::CHOOSE_JOIN_GAME);
+        $this->assertTrue(BMGameState::CHOOSE_JOIN_GAME <
+                          BMGameState::SPECIFY_RECIPES);
+        $this->assertTrue(BMGameState::SPECIFY_RECIPES <
                           BMGameState::LOAD_DICE_INTO_BUTTONS);
         $this->assertTrue(BMGameState::LOAD_DICE_INTO_BUTTONS <
                           BMGameState::ADD_AVAILABLE_DICE_TO_GAME);
@@ -27,11 +31,15 @@ class BMGameStateTest extends PHPUnit_Framework_TestCase {
         $this->assertTrue(BMGameState::START_ROUND <
                           BMGameState::START_TURN);
         $this->assertTrue(BMGameState::START_TURN <
+                          BMGameState::CHOOSE_TURBO_SWING);
+        $this->assertTrue(BMGameState::CHOOSE_TURBO_SWING <
                           BMGameState::END_TURN);
         $this->assertTrue(BMGameState::END_TURN <
                           BMGameState::END_ROUND);
         $this->assertTrue(BMGameState::END_ROUND <
                           BMGameState::END_GAME);
+        $this->assertTrue(BMGameState::END_GAME <
+                          BMGameState::CANCELLED);
     }
 
     /**

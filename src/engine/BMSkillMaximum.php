@@ -9,23 +9,55 @@
  * This class contains code specific to the maximum die skill
  */
 class BMSkillMaximum extends BMSkill {
-    public static $hooked_methods = array('post_roll');
+    /**
+     * An array containing the names of functions run by
+     * BMCanHaveSkill->run_hooks()
+     *
+     * @var array
+     */
+    public static $hooked_methods = array('roll');
 
-    public static function post_roll(&$args) {
+    /**
+     * Hooked method applied while rolling a die
+     *
+     * @param array $args
+     * @return bool
+     */
+    public static function roll(&$args) {
         if (!($args['die'] instanceof BMDie)) {
             return FALSE;
         }
-        
+
         $die = $args['die'];
+
+        if (!$die->doesReroll && isset($die->value)) {
+            return FALSE;
+        }
+
         $die->value = $die->max;
         return TRUE;
     }
 
+    /**
+     * Description of skill
+     *
+     * @return string
+     */
     protected static function get_description() {
         return 'Maximum dice always roll their maximum value.';
     }
 
+    /**
+     * Descriptions of interactions between this skill and other skills
+     *
+     * An array, indexed by other skill name, whose values are descriptions of
+     * interactions between the relevant skills
+     *
+     * @return array
+     */
     protected static function get_interaction_descriptions() {
-        return array();
+        return array(
+            'Konstant' => 'Dice with both Konstant and Maximum retain their current value when rerolled',
+        );
     }
 }

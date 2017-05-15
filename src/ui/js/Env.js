@@ -30,7 +30,10 @@ if ('unit_test' in Env) {
   Env.ui_root = '../ui/';
 
   // We also want to mock the window and history objects in unit tests
-  Env.window = { location: {} };
+  Env.window = {
+    location: {},
+    confirm: function() {return true;},
+  };
   Env.history = {
     pushState: function(state, title, url) {
       Env.history.state = state;
@@ -92,7 +95,7 @@ Env.removeParameterByName = function(name) {
 // messages
 Env.setupEnvStub = function() {
   if ($('#env_message').length === 0) {
-    $('body').append($('<div>', {'id': 'env_message', }));
+    $('#c_body').append($('<div>', {'id': 'env_message', }));
   }
 };
 
@@ -211,15 +214,22 @@ Env.addClickKeyboardHandlers = function(
   // behavior, install a keydown handler.
   if (spaceHandlerCallback || returnHandlerCallback) {
     element.keydown(function(eventData) {
+      var doSwallowKeypress = false;
 
       // if a space handler was specified, invoke it on spacebar
       if (spaceHandlerCallback && eventData.which == Env.KEYCODE_SPACEBAR) {
         spaceHandlerCallback.call(element, eventData);
+        // actively swallow the space event to stop scrolling
+        doSwallowKeypress = true;
       }
 
       // if a return handler was specified, invoke it on return
       if (returnHandlerCallback && eventData.which == Env.KEYCODE_RETURN) {
         returnHandlerCallback.call(element, eventData);
+      }
+
+      if (doSwallowKeypress) {
+        return false;
       }
     });
   }
@@ -309,6 +319,41 @@ Env.applyBbCodeToHtml = function(htmlToParse) {
       'closingHtml': '</a>',
       'escapeParameter': true,
     },
+    'button': {
+      'isAtomic': true,
+      'isLink': true,
+      'openingHtml':
+          '<a class="chatButtonLink" href="buttons.html?button=###">',
+      'closingHtml': '</a>',
+      'escapeParameter': true,
+    },
+    'set': {
+      'isAtomic': true,
+      'isLink': true,
+      'openingHtml':
+          '<a class="chatButtonSetLink" href="buttons.html?set=###">',
+      'closingHtml': '</a>',
+      'escapeParameter': true,
+    },
+    'wiki': {
+      'isAtomic': true,
+      'isLink': true,
+      'openingHtml':
+          '<a class="chatWikiLink" ' +
+          'href="http://buttonweavers.wikia.com/wiki/###">Wiki: ',
+      'closingHtml': '</a>',
+      'escapeParameter': true,
+    },
+    'issue': {
+      'isAtomic': true,
+      'isLink': true,
+      'openingHtml':
+          '<a class="chatIssueLink" ' +
+          'href="https://github.com/buttonmen-dev/buttonmen/issues/###">' +
+          'Issue ',
+      'closingHtml': '</a>',
+      'escapeParameter': true,
+    },
     '[': {
       'isAtomic': true,
       'openingHtml': '[',
@@ -369,7 +414,7 @@ Env.applyBbCodeToHtml = function(htmlToParse) {
         }
       }
       tagName = tagName.toLowerCase();
-      var tagParameter = match[i+1] || '';
+      var tagParameter = match[i + 1] || '';
       var stuffAfterTag = match[match.length - 1];
 
       outputHtml += stuffBeforeTag;
@@ -387,8 +432,15 @@ Env.applyBbCodeToHtml = function(htmlToParse) {
         }
         // Insert things like the game ID into a game.html link
         if (replacements[tagName].escapeParameter) {
-          htmlOpeningTag =
-            htmlOpeningTag.replace('###', encodeURIComponent(tagParameter));
+          // We need to HTML decode the parameter before we URI encode it,
+          // and the easiest way is to pretend we're going to render it
+          var tempDiv = $('<div>');
+          tempDiv.html(tagParameter);
+          var decodedTagParameter = tempDiv.text();
+          htmlOpeningTag = htmlOpeningTag.replace(
+            '###',
+            encodeURIComponent(decodedTagParameter)
+          );
         } else {
           htmlOpeningTag = htmlOpeningTag.replace('###', tagParameter);
         }
@@ -444,6 +496,16 @@ Env.buildProfileLink = function(playerName, textOnly) {
       'text': playerName,
     });
   }
+};
+
+// Utility function to build a vacation image object
+Env.buildVacationImage = function(size) {
+  var image = (size=='large') ? 'vacation22.png' : 'vacation16.png';
+  return  $('<img>', {
+    'src': Env.ui_root + 'images/' + image,
+    'class': 'playerFlag',
+    'title': 'On Vacation'
+  });
 };
 
 // Utility function to link to a button page given a button name

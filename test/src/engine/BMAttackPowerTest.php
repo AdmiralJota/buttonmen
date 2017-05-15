@@ -18,7 +18,7 @@ class BMAttackPowerTest extends PHPUnit_Framework_TestCase {
      */
     protected function setUp()
     {
-        $this->object = BMAttackPower::get_instance();
+        $this->object = new BMAttackPower;
     }
 
     /**
@@ -168,9 +168,9 @@ class BMAttackPowerTest extends PHPUnit_Framework_TestCase {
         $this->assertTrue($this->object->validate_attack($game, array($die2), array($die1)));
 
         // test case where the amount of help is explicitly specified
-        $this->assertFalse($this->object->validate_attack($game, array($die2), array($die1), 1));
-        $this->assertTrue($this->object->validate_attack($game, array($die2), array($die1), 5));
-        $this->assertFalse($this->object->validate_attack($game, array($die2), array($die1), 6));
+        $this->assertFalse($this->object->validate_attack($game, array($die2), array($die1), array('helpValue' => 1)));
+        $this->assertTrue($this->object->validate_attack($game, array($die2), array($die1), array('helpValue' => 5)));
+        $this->assertFalse($this->object->validate_attack($game, array($die2), array($die1), array('helpValue' => 6)));
     }
 
     /**

@@ -3,6 +3,10 @@ module("Env", {
     BMTestUtils.EnvPre = BMTestUtils.getAllElements();
 
     BMTestUtils.setupFakeLogin();
+
+    // Create an empty #c_body for use by these tests, because they don't create a normal page
+    $('body').append($('<div>', {'id': 'container', }));
+    $('#container').append($('<div>', {'id': 'c_body'}));
 },
   'teardown': function(assert) {
 
@@ -14,6 +18,7 @@ module("Env", {
     // Delete all elements we expect this module to create
     BMTestUtils.deleteEnvMessage();
     BMTestUtils.cleanupFakeLogin();
+    $('#container').remove();
 
     delete Env.window.location.origin;
     delete Env.window.location.pathname;
@@ -40,7 +45,7 @@ test("test_Env.getParameterByName", function(assert) {
   expect(4); // number of tests plus 2 for the teardown test
 
   Env.window.location.search = '?game=29';
-  Env.window.location.hash = '#!playerNameA=tester&buttonNameA=Avis'
+  Env.window.location.hash = '#!playerNameA=tester&buttonNameA=Avis';
 
   var gameId = Env.getParameterByName('game');
   assert.equal(gameId, '29', 'Query string parameter is found');
@@ -65,7 +70,7 @@ test("test_Env.removeParameterByName", function(assert) {
   Env.window.location.origin = 'http://buttonweavers.com:4444';
   Env.window.location.pathname = '/testpage.html';
   Env.window.location.search = '?game=7&auto=true&sparrow=African';
-  Env.window.location.hash = '#!playerNameA=tester&buttonNameA=Avis'
+  Env.window.location.hash = '#!playerNameA=tester&buttonNameA=Avis';
 
   Env.removeParameterByName('auto');
   assert.equal(
@@ -78,7 +83,7 @@ test("test_Env.removeParameterByName", function(assert) {
   Env.window.location.origin = 'http://buttonweavers.com';
   Env.window.location.pathname = '/game.html';
   Env.window.location.search = '?game=7';
-  Env.window.location.hash = ''
+  Env.window.location.hash = '';
 
   Env.removeParameterByName('auto');
   assert.equal(
@@ -205,15 +210,15 @@ test("test_Env.addClickKeyboardHandlers", function(assert) {
   var mouseClicked;
   var registerMouseClick = function() {
     mouseClicked = true;
-  }
+  };
   var spacePressed;
   var registerSpacePress = function() {
     spacePressed = true;
-  }
+  };
   var returnPressed;
   var registerReturnPress = function() {
     returnPressed = true;
-  }
+  };
   Env.addClickKeyboardHandlers(item, registerMouseClick, registerSpacePress, registerReturnPress);
 
   var spacePress = jQuery.Event('keydown');
@@ -286,6 +291,22 @@ test("test_Env.buildProfileLink", function(assert) {
   var linktext = Env.buildProfileLink('tester', true);
   assert.equal(linktext, 'profile.html?player=tester',
     'Link text should point to profile page.');
+});
+
+test("test_Env.buildVacationImage", function(assert) {
+  var vacationImage = Env.buildVacationImage();
+  assert.equal(vacationImage.attr('src'), 
+     Env.ui_root + 'images/vacation16.png',
+     'Vacation image should point to correct image.');
+  assert.equal(vacationImage.attr('class'), 'playerFlag',
+     'Vacation image should have a CSS class of playerFlag.');
+  assert.equal(vacationImage.attr('title'), 'On Vacation',
+     'Vacation image should have a title of On Vacation.');
+
+  vacationImage = Env.buildVacationImage('large');
+  assert.equal(vacationImage.attr('src'), 
+     Env.ui_root + 'images/vacation22.png',
+     'Vacation image should point to correct image.');
 });
 
 test("test_Env.buildButtonLink", function(assert) {

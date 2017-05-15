@@ -9,8 +9,19 @@
  * This class contains code specific to the shadow die skill
  */
 class BMSkillShadow extends BMSkill {
+    /**
+     * An array containing the names of functions run by
+     * BMCanHaveSkill->run_hooks()
+     *
+     * @var array
+     */
     public static $hooked_methods = array('attack_list');
 
+    /**
+     * Hooked method applied when determining possible attack types
+     *
+     * @param array $args
+     */
     public static function attack_list($args) {
         if (!is_array($args)) {
             return;
@@ -18,7 +29,7 @@ class BMSkillShadow extends BMSkill {
 
         $attackTypeArray = &$args['attackTypeArray'];
 
-        foreach (BMSkillShadow::incompatible_attack_types() as $attackType) {
+        foreach (self::incompatible_attack_types() as $attackType) {
             if (array_key_exists($attackType, $attackTypeArray)) {
                 unset($attackTypeArray[$attackType]);
             }
@@ -26,16 +37,26 @@ class BMSkillShadow extends BMSkill {
 
         $attackTypeArray['Shadow'] = 'Shadow';
     }
-    
-    public static function incompatible_attack_types($args = NULL) {
+
+    /**
+     * Attack types incompatible with this skill type
+     *
+     * @return array
+     */
+    public static function incompatible_attack_types() {
         return array('Power');
     }
 
+    /**
+     * Description of skill
+     *
+     * @return string
+     */
     protected static function get_description() {
         return 'These dice are normal in all respects, except that ' .
                'they cannot make Power Attacks. Instead, they make inverted ' .
                'Power Attacks, called "Shadow Attacks." To make a Shadow ' .
-               'Attack, Use one of your Shadow Dice to capture one of your ' .
+               'Attack, use one of your Shadow Dice to capture one of your ' .
                'opponent\'s dice. The number showing on the die you capture ' .
                'must be greater than or equal to the number showing on your ' .
                'die, but within its range. For example, a shadow 10-sided ' .
@@ -43,6 +64,14 @@ class BMSkillShadow extends BMSkill {
                '2 to 10.';
     }
 
+    /**
+     * Descriptions of interactions between this skill and other skills
+     *
+     * An array, indexed by other skill name, whose values are descriptions of
+     * interactions between the relevant skills
+     *
+     * @return array
+     */
     protected static function get_interaction_descriptions() {
         return array(
             'Stinger' => 'Dice with both Shadow and Stinger skills ' .

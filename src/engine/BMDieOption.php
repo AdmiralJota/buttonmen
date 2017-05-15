@@ -9,14 +9,44 @@
  * This class contains all the logic to do with requesting and setting option values
  *
  * @property      array $optionValueArray  Possible option values
- * @property-read bool  $needsOptionValue  Flag indicating whether an option value is still needed
- * @property-read bool  $valueRequested    Flag indicating whether an option request has been sent to the parent
+ * @property-read bool  $needsOptionValue  Flag indicating if an option value is still needed
+ * @property-read bool  $valueRequested    Flag indicating if an option request has been sent to the owner
  */
 class BMDieOption extends BMDie {
+    /**
+     * Possible option values
+     *
+     * @var array
+     */
     protected $optionValueArray;
+
+    /**
+     * Flag indicating if an option value is still needed
+     *
+     * @var bool
+     */
     protected $needsOptionValue;
+
+    /**
+     * Flag indicating if an option request has been sent to the owning BMGame
+     *
+     * @var type
+     */
     protected $valueRequested;
 
+    /**
+     * Set the possible option values for the BMDieOption, and add die skills
+     *
+     * Hackish: the caller can specify each skill as either a plain
+     * value, "skill", or a key/value pair "ClassName" => "skill",
+     * where the key is the class name which implements that skill.
+     * This is only for use by callers outside of engine (e.g.
+     * testing), and should never be used for the default BMSkill*
+     * set of skills.
+     *
+     * @param array $optionArray
+     * @param array $skills
+     */
     public function init($optionArray, array $skills = NULL) {
         if (!is_array($optionArray) ||
             2 != count($optionArray)) {
@@ -35,6 +65,14 @@ class BMDieOption extends BMDie {
         $this->add_multiple_skills($skills);
     }
 
+    /**
+     * Create a BMDieOption with a specified array of option values, then
+     * add skills to the die.
+     *
+     * @param array $optionArray
+     * @param array $skills
+     * @return BMDieOption
+     */
     public static function create($optionArray, array $skills = NULL) {
         $die = new BMDieOption;
 
@@ -43,10 +81,14 @@ class BMDieOption extends BMDie {
         return $die;
     }
 
+    /**
+     * Wakes up a die from its container to be used in a game.
+     * Does not roll the die.
+     *
+     * Clones the die and returns the clone.
+     */
     public function activate() {
         $newDie = clone $this;
-
-        $this->run_hooks(__FUNCTION__, array('die' => $newDie));
 
         $this->ownerObject->add_die($newDie);
 
@@ -60,8 +102,14 @@ class BMDieOption extends BMDie {
         $newDie->valueRequested = TRUE;
     }
 
-    public function roll($isTriggeredByAttack = FALSE) {
-        if ($this->needsOptionValue) {
+    /**
+     * Roll die
+     *
+     * @param bool $isTriggeredByAttack
+     * @param bool $isSubdie
+     */
+    public function roll($isTriggeredByAttack = FALSE, $isSubdie = FALSE) {
+        if ($this->needsOptionValue && !isset($this->max)) {
             if (!$this->valueRequested) {
                 $this->ownerObject->request_option_values(
                     $this,
@@ -71,11 +119,16 @@ class BMDieOption extends BMDie {
                 $this->valueRequested = TRUE;
             }
         } else {
-            parent::roll($isTriggeredByAttack);
+            parent::roll($isTriggeredByAttack, $isSubdie);
         }
     }
 
-    // Print long description
+    /**
+     * Print long description
+     *
+     * @param bool $isValueRequired
+     * @return string
+     */
     public function describe($isValueRequired = FALSE) {
         if (!is_bool($isValueRequired)) {
             throw new InvalidArgumentException('isValueRequired must be boolean');
@@ -84,13 +137,24 @@ class BMDieOption extends BMDie {
         $skillStr = '';
         if (count($this->skillList) > 0) {
             foreach (array_keys($this->skillList) as $skill) {
-                $skillStr .= "$skill ";
+                if ('Turbo' != $skill) {
+                    $skillStr .= "$skill ";
+                }
             }
+        }
+
+        $turboStr = '';
+        if ($this->has_skill('Turbo')) {
+            $turboStr = 'Turbo ';
         }
 
         $sideStr = '';
         if (isset($this->max)) {
-            $sideStr = " (with {$this->max} sides)";
+            $sideStr = " (with {$this->max} side";
+            if ($this->max != 1) {
+                $sideStr .= 's';
+            }
+            $sideStr .= ')';
         } else {
             $sideStr = " (with {$this->optionValueArray[0]} or {$this->optionValueArray[1]} sides)";
         }
@@ -100,21 +164,17 @@ class BMDieOption extends BMDie {
             $valueStr = " showing {$this->value}";
         }
 
-        $result = "{$skillStr}Option Die{$sideStr}{$valueStr}";
+        $result = "{$skillStr}{$turboStr}Option Die{$sideStr}{$valueStr}";
 
         return $result;
     }
 
-    public function split() {
-        $normalDie = new BMDie();
-        // note: init requires an array without string keys
-        $normalDie->init($this->max, array_keys($this->skillList));
-        $normalDie->ownerObject = $this->ownerObject;
-        $normalDie->playerIdx = $this->playerIdx;
-        $normalDie->originalPlayerIdx = $this->originalPlayerIdx;
-        return $normalDie->split();
-    }
-
+    /**
+     * Try to set option value for this BMDieOption
+     *
+     * @param int $optionValue
+     * @return bool
+     */
     public function set_optionValue($optionValue) {
         if (FALSE === array_search($optionValue, $this->optionValueArray)) {
             return FALSE;
@@ -128,6 +188,11 @@ class BMDieOption extends BMDie {
         return TRUE;
     }
 
+    /**
+     * Get all die types.
+     *
+     * @return array
+     */
     public function getDieTypes() {
         $typesList = array();
         $typesList['Option'] = array(
@@ -150,17 +215,9 @@ class BMDieOption extends BMDie {
      * @param mixed $value
      */
     public function __set($property, $value) {
-        switch ($property) {
-            case 'max':
-                if (in_array($value, $this->optionValueArray) ||
-                    is_null($value)) {
-                    $this->$property = $value;
-                } else {
-                    throw new LogicException('Chosen option value is invalid.');
-                }
-                break;
-            default:
+//        switch ($property) {
+//            default:
                 parent::__set($property, $value);
-        }
+//        }
     }
 }

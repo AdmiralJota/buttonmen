@@ -7,6 +7,7 @@ module("Verify", {
 
     // Create the verify_page div so functions have something to modify
     if (document.getElementById('verify_page') == null) {
+      $('body').append($('<div>', {'id': 'env_message', }));
       $('body').append($('<div>', {'id': 'verify_page', }));
     }
   },
@@ -24,7 +25,6 @@ module("Verify", {
 
     // Page elements
     $('#verify_page').remove();
-    $('#verify_page').empty();
 
     BMTestUtils.deleteEnvMessage();
     BMTestUtils.restoreGetParameterByName();
@@ -57,13 +57,13 @@ test("test_Verify.showLoggedInPage", function(assert) {
   var getVerifyParamsCalled = false;
   Verify.showStatePage = function() {
     assert.ok(getVerifyParamsCalled, "Verify.getVerifyParams is called before Verify.showStatePage");
-  }
+  };
   Verify.getVerifyParams = function(callback) {
     getVerifyParamsCalled = true;
     assert.equal(callback, Verify.showStatePage,
       "Verify.getVerifyParams is called with Verify.showStatePage as an argument");
     callback();
-  }
+  };
 
   Verify.showLoggedInPage();
   var item = document.getElementById('verify_page');
@@ -90,14 +90,7 @@ test("test_Verify.getVerifyParams", function(assert) {
 });
 
 test("test_Verify.showStatePage", function(assert) {
-  Env.setupEnvStub();
-  Env.message = {
-    'type': 'error',
-    'text': 'test error',
-  };
-  Verify.showStatePage();
-  var item = document.getElementById('env_message');
-  assert.ok(item.innerHTML.match('test error'), "env message is set by this function");
+// FIXME: put a test here that actually meaningfully tests the code
 });
 
 test("test_Verify.setVerifyUserSuccessMessage", function(assert) {

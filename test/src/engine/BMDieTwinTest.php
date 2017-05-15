@@ -68,6 +68,7 @@ class BMDieTwinTest extends PHPUnit_Framework_TestCase {
         $this->assertTrue($this->object->has_skill("Testing2"));
         $this->assertCount(2, $this->object->dice);
         $this->assertInstanceOf('BMDie', $this->object->dice[0]);
+        $this->assertNotInstanceOf('BMDieSwing', $this->object->dice[0]);
         $this->assertInstanceOf('BMDieSwing', $this->object->dice[1]);
         $this->assertEquals(1, $this->object->dice[0]->min);
         $this->assertEquals(2, $this->object->dice[0]->max);
@@ -87,6 +88,7 @@ class BMDieTwinTest extends PHPUnit_Framework_TestCase {
         $this->assertCount(2, $this->object->dice);
         $this->assertInstanceOf('BMDieSwing', $this->object->dice[0]);
         $this->assertInstanceOf('BMDie', $this->object->dice[1]);
+        $this->assertNotInstanceOf('BMDieSwing', $this->object->dice[1]);
         $this->assertEquals(1, $this->object->dice[0]->min);
         $this->assertNull($this->object->dice[0]->max);
         $this->assertEquals(1, $this->object->dice[1]->min);
@@ -398,7 +400,7 @@ class BMDieTwinTest extends PHPUnit_Framework_TestCase {
      * @depends testRoll
      */
     public function testSplit() {
-        // 1-siders split into two 1-siders
+        // (1,1) splits into (1,0) and (0,1)
         $this->object->init(array(1, 1), array());
         $this->object->roll(FALSE);
 
@@ -406,13 +408,13 @@ class BMDieTwinTest extends PHPUnit_Framework_TestCase {
 
         $this->assertFalse($splitDice[0] === $splitDice[1]);
         $this->assertEquals(1, $splitDice[0]->dice[0]->max);
-        $this->assertEquals(1, $splitDice[0]->dice[1]->max);
-        $this->assertEquals(1, $splitDice[1]->dice[0]->max);
+        $this->assertEquals(0, $splitDice[0]->dice[1]->max);
+        $this->assertEquals(0, $splitDice[1]->dice[0]->max);
         $this->assertEquals(1, $splitDice[1]->dice[1]->max);
-        $this->assertEquals(2, $splitDice[0]->min);
-        $this->assertEquals(2, $splitDice[0]->max);
-        $this->assertEquals(2, $splitDice[1]->min);
-        $this->assertEquals(2, $splitDice[1]->max);
+        $this->assertEquals(1, $splitDice[0]->min);
+        $this->assertEquals(1, $splitDice[0]->max);
+        $this->assertEquals(1, $splitDice[1]->min);
+        $this->assertEquals(1, $splitDice[1]->max);
 
         // even-sided split
         $this->object->init(array(12, 16), array());
@@ -440,13 +442,13 @@ class BMDieTwinTest extends PHPUnit_Framework_TestCase {
         $this->assertFalse($splitDice[0] === $splitDice[1]);
         $this->assertTrue($this->object === $splitDice[0]);
         $this->assertEquals(3, $splitDice[0]->dice[0]->max);
-        $this->assertEquals(5, $splitDice[0]->dice[1]->max);
+        $this->assertEquals(4, $splitDice[0]->dice[1]->max);
         $this->assertEquals(2, $splitDice[1]->dice[0]->max);
-        $this->assertEquals(4, $splitDice[1]->dice[1]->max);
+        $this->assertEquals(5, $splitDice[1]->dice[1]->max);
         $this->assertEquals(2, $splitDice[0]->min);
-        $this->assertEquals(8, $splitDice[0]->max);
+        $this->assertEquals(7, $splitDice[0]->max);
         $this->assertEquals(2, $splitDice[1]->min);
-        $this->assertEquals(6, $splitDice[1]->max);
+        $this->assertEquals(7, $splitDice[1]->max);
 
         // swing split
         $this->object->init(array('X', 'X'));
@@ -455,18 +457,84 @@ class BMDieTwinTest extends PHPUnit_Framework_TestCase {
 
         $this->assertFalse($splitDice[0] === $splitDice[1]);
         $this->assertTrue($this->object === $splitDice[0]);
-        $this->assertNotInstanceOf('BMDieSwing', $splitDice[0]->dice[0]);
-        $this->assertNotInstanceOf('BMDieSwing', $splitDice[0]->dice[1]);
-        $this->assertNotInstanceOf('BMDieSwing', $splitDice[1]->dice[0]);
-        $this->assertNotInstanceOf('BMDieSwing', $splitDice[1]->dice[1]);
+        $this->assertInstanceOf('BMDieSwing', $splitDice[0]->dice[0]);
+        $this->assertInstanceOf('BMDieSwing', $splitDice[0]->dice[1]);
+        $this->assertInstanceOf('BMDieSwing', $splitDice[1]->dice[0]);
+        $this->assertInstanceOf('BMDieSwing', $splitDice[1]->dice[1]);
+        $this->assertEquals('X', $splitDice[0]->dice[0]->swingType);
+        $this->assertEquals('X', $splitDice[0]->dice[1]->swingType);
+        $this->assertEquals('X', $splitDice[1]->dice[0]->swingType);
+        $this->assertEquals('X', $splitDice[1]->dice[1]->swingType);
         $this->assertEquals(3, $splitDice[0]->dice[0]->max);
-        $this->assertEquals(3, $splitDice[0]->dice[1]->max);
+        $this->assertEquals(5, $splitDice[0]->dice[0]->swingValue);
+        $this->assertEquals(2, $splitDice[0]->dice[1]->max);
+        $this->assertEquals(5, $splitDice[0]->dice[1]->swingValue);
         $this->assertEquals(2, $splitDice[1]->dice[0]->max);
-        $this->assertEquals(2, $splitDice[1]->dice[1]->max);
+        $this->assertEquals(5, $splitDice[1]->dice[0]->swingValue);
+        $this->assertEquals(3, $splitDice[1]->dice[1]->max);
+        $this->assertEquals(5, $splitDice[1]->dice[1]->swingValue);
         $this->assertEquals(2, $splitDice[0]->min);
-        $this->assertEquals(6, $splitDice[0]->max);
+        $this->assertEquals(5, $splitDice[0]->max);
         $this->assertEquals(2, $splitDice[1]->min);
-        $this->assertEquals(4, $splitDice[1]->max);
+        $this->assertEquals(5, $splitDice[1]->max);
+    }
+
+    /*
+     * @covers BMDieTwin::shrink
+     */
+    public function testShrink() {
+        $die = $this->object;
+        $die->init(array(99, 99));
+        $die->shrink();
+        $this->assertEquals(2*30, $die->max);
+        $die->shrink();
+        $this->assertEquals(2*20, $die->max);
+        $die->shrink();
+        $this->assertEquals(2*16, $die->max);
+        $die->shrink();
+        $this->assertEquals(2*12, $die->max);
+        $die->shrink();
+        $this->assertEquals(2*10, $die->max);
+        $die->shrink();
+        $this->assertEquals(2*8, $die->max);
+        $die->shrink();
+        $this->assertEquals(2*6, $die->max);
+        $die->shrink();
+        $this->assertEquals(2*4, $die->max);
+        $die->shrink();
+        $this->assertEquals(2*2, $die->max);
+        $die->shrink();
+        $this->assertEquals(2*1, $die->max);
+        $die->shrink();
+        $this->assertEquals(2*1, $die->max);
+    }
+
+    /*
+     * @covers BMDieTwin::grow
+     */
+    public function testGrow() {
+        $die = $this->object;
+        $die->init(array(1, 1));
+        $die->grow();
+        $this->assertEquals(2*2, $die->max);
+        $die->grow();
+        $this->assertEquals(2*4, $die->max);
+        $die->grow();
+        $this->assertEquals(2*6, $die->max);
+        $die->grow();
+        $this->assertEquals(2*8, $die->max);
+        $die->grow();
+        $this->assertEquals(2*10, $die->max);
+        $die->grow();
+        $this->assertEquals(2*12, $die->max);
+        $die->grow();
+        $this->assertEquals(2*16, $die->max);
+        $die->grow();
+        $this->assertEquals(2*20, $die->max);
+        $die->grow();
+        $this->assertEquals(2*30, $die->max);
+        $die->grow();
+        $this->assertEquals(2*30, $die->max);
     }
 
     /*
@@ -514,6 +582,32 @@ class BMDieTwinTest extends PHPUnit_Framework_TestCase {
         $swingList = array('X' => 8);
         $this->assertTrue($die8->set_swingValue($swingList));
         $this->assertEquals('sp(X=8,X=8)', $die8->get_recipe(TRUE));
+    }
+
+    /**
+     * @covers BMDieTwin::recalc_max_min
+     *
+     * @depends testInit
+     */
+    public function testRecalc_max_min() {
+        $die = new BMDieTwin;
+        $die->init(array('X', 'X'));
+        $swingList = array('X' => 8);
+        $die->set_swingValue($swingList);
+        $this->assertEquals(8, $die->dice[0]->max);
+        $this->assertEquals(8, $die->dice[1]->max);
+        $this->assertEquals(16, $die->max);
+        $die->dice[0]->value = 2;
+        $die->dice[1]->value = 3;
+        $die->value = 5;
+
+        $die->dice[0]->max = 3;
+        $die->dice[1]->max = 4;
+        $die->recalc_max_min();
+        $this->assertEquals(7, $die->max);
+        $this->assertEquals(5, $die->value);
+        $this->assertEquals(2, $die->dice[0]->value);
+        $this->assertEquals(3, $die->dice[1]->value);
     }
 
 
@@ -577,4 +671,26 @@ class BMDieTwinTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals($this->object->max, 21);
     }
 
+    /**
+     * @covers BMDieTwin::__clone
+     *
+     * @depends testInit
+     */
+    public function testClone_twin() {
+        $originalDie = new BMDieTwin;
+        $originalDie->init(array(5, 12), array());
+        $originalSubdie0 = $originalDie->dice[0];
+        $originalSubdie1 = $originalDie->dice[1];
+        $this->assertEquals(5, $originalSubdie0->max);
+        $this->assertEquals(12, $originalSubdie1->max);
+
+        $cloneDie = clone $originalDie;
+        $cloneSubdie0 = $cloneDie->dice[0];
+        $cloneSubdie1 = $cloneDie->dice[1];
+        $this->assertEquals(5, $cloneSubdie0->max);
+        $this->assertEquals(12, $cloneSubdie1->max);
+
+        $this->assertFalse($originalSubdie0 === $cloneSubdie0);
+        $this->assertFalse($originalSubdie1 === $cloneSubdie1);
+    }
 }

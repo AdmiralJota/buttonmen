@@ -10,6 +10,7 @@ module("Forum", {
 
     // Create the forum_page div so functions have something to modify
     if (document.getElementById('forum_page') == null) {
+      $('body').append($('<div>', {'id': 'env_message', }));
       $('body').append($('<div>', {'id': 'forum_page', }));
     }
 
@@ -40,7 +41,6 @@ module("Forum", {
 
     // Page elements
     $('#forum_page').remove();
-    $('#forum_page').empty();
 
     BMTestUtils.deleteEnvMessage();
     BMTestUtils.cleanupFakeLogin();
@@ -199,7 +199,7 @@ test("test_Forum.formPostNewThread", function(assert) {
   stop();
   expect(3); // tests plus teardown test
 
-  Api.forum_board = { 'boardId': 3 };
+  Api.forum_board = { 'boardId': 1 };
 
   var formHolder = $('<div>');
   formHolder.append($('<input>', { 'class': 'title', 'value': 'Test', } ));
@@ -220,7 +220,7 @@ test("test_Forum.formReplyToThread", function(assert) {
   stop();
   expect(3); // tests plus teardown test
 
-  Api.forum_thread = { 'threadId': 3 };
+  Api.forum_thread = { 'threadId': 1 };
 
   var formHolder = $('<div>');
   formHolder.append($('<textarea>', { 'text': 'Test body' } ));

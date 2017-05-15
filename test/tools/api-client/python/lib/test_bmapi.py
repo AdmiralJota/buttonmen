@@ -58,7 +58,7 @@ class TestBMClient(unittest.TestCase):
     self.assertEqual(testButton['hasUnimplementedSkill'], False)
     self.assertEqual(testButton['isTournamentLegal'], False)
     self.assertEqual(testButton['recipe'], 'z(8/12) (4/16) s(6/10) z(X) s(U)')
-    self.assertEqual(testButton['artFilename'], 'BMdefaultRound.png')
+    self.assertEqual(testButton['artFilename'], 'cactusjack.png')
     self.assertEqual(testButton['tags'], [ ])
 
   def test_load_player_names(self):
@@ -78,9 +78,10 @@ class TestBMClient(unittest.TestCase):
     r = self.obj.load_active_games()
     self.assertEqual(r.status, 'ok', 'loadActiveGames returns successfully')
     known_keys = [
-      'gameIdArray', 'gameStateArray', 'inactivityArray',
-      'isAwaitingActionArray', 'myButtonNameArray', 'nDrawsArray',
-      'nLossesArray', 'nTargetWinsArray', 'nWinsArray',
+      'gameDescriptionArray', 'gameIdArray', 'gameStateArray',
+      'inactivityArray', 'inactivityRawArray',
+      'isAwaitingActionArray', 'isOpponentOnVacationArray', 'myButtonNameArray',
+      'nDrawsArray', 'nLossesArray', 'nTargetWinsArray', 'nWinsArray',
       'opponentButtonNameArray', 'opponentColorArray', 'opponentIdArray',
       'opponentNameArray', 'playerColorArray', 'statusArray'
     ]
@@ -95,9 +96,10 @@ class TestBMClient(unittest.TestCase):
     r = self.obj.load_completed_games()
     self.assertEqual(r.status, 'ok', 'loadCompletedGames returns successfully')
     known_keys = [
-      'gameIdArray', 'gameStateArray', 'inactivityArray',
-      'isAwaitingActionArray', 'myButtonNameArray', 'nDrawsArray',
-      'nLossesArray', 'nTargetWinsArray', 'nWinsArray',
+      'gameDescriptionArray', 'gameIdArray', 'gameStateArray',
+      'inactivityArray', 'inactivityRawArray',
+      'isAwaitingActionArray', 'isOpponentOnVacationArray', 'myButtonNameArray',
+      'nDrawsArray', 'nLossesArray', 'nTargetWinsArray', 'nWinsArray',
       'opponentButtonNameArray', 'opponentColorArray', 'opponentIdArray',
       'opponentNameArray', 'playerColorArray', 'statusArray'
     ]
@@ -124,12 +126,15 @@ class TestBMClient(unittest.TestCase):
 
   def test_load_game_data(self):
     known_keys = [
-      'activePlayerIdx', 'currentPlayerIdx', 'description', 'gameActionLog',
-      'gameChatEditable', 'gameChatLog', 'gameId', 'gameSkillsInfo',
+      'activePlayerIdx', 'currentPlayerIdx', 'description',
+      'dieBackgroundType', 'gameActionLog', 'gameActionLogCount',
+      'gameChatEditable', 'gameChatLog', 'gameChatLogCount',
+      'gameId', 'gameSkillsInfo',
       'gameState', 'maxWins', 'playerDataArray', 'playerWithInitiativeIdx',
       'previousGameId', 'roundNumber', 'timestamp', 'validAttackTypeArray'
     ]
-    r = self.obj.load_game_data(1)
+    self.obj.username = 'responder001'
+    r = self.obj.load_game_data(101)
     self.assertEqual(r.status, 'ok')
     self.assertEqual(sorted(r.data.keys()), known_keys)
     self.assertTrue(type(r.data['activePlayerIdx']) in [int, type(None)])
@@ -137,10 +142,12 @@ class TestBMClient(unittest.TestCase):
 
     player_data_keys = [
       'activeDieArray', 'button', 'canStillWin', 'capturedDieArray',
-      'gameScoreArray', 'hasDismissedGame', 'lastActionTime',
-      'optRequestArray', 'playerColor', 'playerId', 'playerName',
+      'gameScoreArray', 'hasDismissedGame',
+      'isOnVacation', 'lastActionTime',
+      'optRequestArray', 'outOfPlayDieArray',
+      'playerColor', 'playerId', 'playerName',
       'prevOptValueArray', 'prevSwingValueArray', 'roundScore', 'sideScore',
-      'swingRequestArray', 'waitingOnAction'
+      'swingRequestArray', 'turboSizeArray', 'waitingOnAction'
     ]
     player_data = r.data['playerDataArray'][0]
     self.assertEqual(sorted(player_data.keys()), player_data_keys)

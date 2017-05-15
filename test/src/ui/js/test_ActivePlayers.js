@@ -1,4 +1,4 @@
-  module("ActivePlayers", {
+module("ActivePlayers", {
   'setup': function() {
     BMTestUtils.ActivePlayersPre = BMTestUtils.getAllElements();
 
@@ -6,6 +6,7 @@
 
     // Create the activeplayers_page div so functions have something to modify
     if (document.getElementById('activeplayers_page') == null) {
+      $('body').append($('<div>', {'id': 'env_message', }));
       $('body').append($('<div>', {'id': 'activeplayers_page', }));
     }
   },
@@ -24,7 +25,6 @@
 
     // Page elements
     $('#activeplayers_page').remove();
-    $('#activeplayers_page').empty();
 
     BMTestUtils.deleteEnvMessage();
     BMTestUtils.cleanupFakeLogin();
@@ -55,13 +55,13 @@ test("test_ActivePlayers.showLoggedInPage", function(assert) {
   var getActivePlayersCalled = false;
   ActivePlayers.showPage = function() {
     assert.ok(getActivePlayersCalled, "ActivePlayers.getActivePlayers is called before ActivePlayers.showPage");
-  }
+  };
   Api.getActivePlayers = function(number, callback) {
     getActivePlayersCalled = true;
     assert.equal(callback, ActivePlayers.showPage,
       "ActivePlayers.getActivePlayers is called with ActivePlayers.showPage as an argument");
     callback();
-  }
+  };
 
   ActivePlayers.showLoggedInPage();
   var item = document.getElementById('activeplayers_page');
@@ -99,7 +99,8 @@ test("test_ActivePlayers.buildPlayersTable", function(assert) {
   Api.getActivePlayers(50, function() {
     var table = ActivePlayers.buildPlayersTable();
     var htmlout = table.html();
-    assert.ok(htmlout.match('12 minutes'), "Players table content was generated");
+    assert.ok(htmlout.match('responder0'), "Players table content contains a username");
+    assert.ok(htmlout.match(' seconds'), "Players table content contains a timestamp");
     start();
   });
 });

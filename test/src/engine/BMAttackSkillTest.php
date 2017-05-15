@@ -18,7 +18,7 @@ class BMAttackSkillTest extends PHPUnit_Framework_TestCase {
      */
     protected function setUp()
     {
-        $this->object = TestDummyBMAttSkillTesting::get_instance();
+        $this->object = new TestDummyBMAttSkillTesting;
         $this->object->reset();
     }
 
@@ -140,8 +140,8 @@ class BMAttackSkillTest extends PHPUnit_Framework_TestCase {
         $this->assertTrue($sk->validate_attack($game, array($die1), $def));
 
         // test case where the amount of help is explicitly specified
-        $this->assertFalse($sk->validate_attack($game, array($die1), $def, 3));
-        $this->assertTrue($sk->validate_attack($game, array($die1), $def, 1));
+        $this->assertFalse($sk->validate_attack($game, array($die1), $def, array('helpValue' => 3)));
+        $this->assertTrue($sk->validate_attack($game, array($die1), $def, array('helpValue' => 1)));
 
         $target->value = 2;
         $this->assertTrue($sk->validate_attack($game, array($die1), $def));
@@ -258,6 +258,69 @@ class BMAttackSkillTest extends PHPUnit_Framework_TestCase {
         $sk->make_hit_table();
 
         $this->assertTrue($sk->validate_attack($game, array($die1, $die2), array($die3)));
+    }
+
+        /**
+     * @covers BMAttackSkill::validate_attack
+     */
+    public function testValidate_attack_insult() {
+        $game = new TestDummyGame;
+
+        $sk = $this->object;
+
+        $die1 = BMDie::create(6);
+        $die1->value = 3;
+
+        $die2 = BMDie::create(6);
+        $die2->value = 4;
+
+        $die3 = BMDie::create(10);
+        $die3->add_skill('Insult');
+        $die3->value = 7;
+
+        // Naturally created during the flow of the game, need to make
+        // by hand here
+        $sk->reset();
+        $sk->add_die($die1);
+        $sk->add_die($die2);
+        $game->attackerAllDieArray = array($die1, $die2);
+        $sk->make_hit_table();
+
+        $this->assertFalse($sk->validate_attack($game, array($die1, $die2), array($die3)));
+    }
+
+    /**
+     * @covers BMAttackSkill::validate_attack
+     */
+    public function testValidate_attack_TheJapaneseBeetle() {
+        $game = new BMGame;
+
+        $sk = $this->object;
+
+        $die1 = BMDie::create(6);
+        $die1 = $die1->make_play_die();
+        $die1->ownerObject = $game;
+        $die1->playerIdx = 0;
+
+        $die2 = BMDie::create(6);
+        $die2->value = $die1->value;
+        $die2->ownerObject = $game;
+        $die2->playerIdx = 1;
+
+        $button1 = new BMButton;
+        $button1->load('(4) (4) (10) (12) (X)', 'Avis');
+        $button2 = new BMButton;
+        $button2->load('(6) (8) (12) (X)', 'TheJapaneseBeetle');
+        $game->buttonArray = array($button1, $button2);
+
+        // Naturally created during the flow of the game, need to make
+        // by hand here
+        $sk->reset();
+        $sk->add_die($die1);
+        $game->attackerAllDieArray = array($die1);
+        $sk->make_hit_table();
+
+        $this->assertFalse($sk->validate_attack($game, array($die1), array($die2)));
     }
 
     /**

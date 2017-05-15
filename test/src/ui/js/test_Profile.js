@@ -6,6 +6,7 @@ module("Profile", {
 
     // Create the profile_page div so functions have something to modify
     if (document.getElementById('profile_page') == null) {
+      $('body').append($('<div>', {'id': 'env_message', }));
       $('body').append($('<div>', {'id': 'profile_page', }));
     }
   },
@@ -25,7 +26,6 @@ module("Profile", {
 
     // Page elements
     $('#profile_page').remove();
-    $('#profile_page').empty();
 
     BMTestUtils.deleteEnvMessage();
     BMTestUtils.cleanupFakeLogin();
@@ -56,13 +56,13 @@ test("test_Profile.showLoggedInPage", function(assert) {
   var getProfileCalled = false;
   Profile.showPage = function() {
     assert.ok(getProfileCalled, "Profile.getProfile is called before Profile.showPage");
-  }
+  };
   Profile.getProfile = function(callback) {
     getProfileCalled = true;
     assert.equal(callback, Profile.showPage,
       "Profile.getProfile is called with Profile.showPage as an argument");
     callback();
-  }
+  };
 
   Profile.showLoggedInPage();
   var item = document.getElementById('profile_page');
@@ -121,4 +121,8 @@ test("test_Profile.buildProfileTableRow", function(assert) {
   tr = Profile.buildProfileTableRow('Things', null, 'nothing', false);
   valueTd = tr.find('td.missingValue');
   assert.equal(valueTd.text(), 'nothing', 'Missing value should be in missingValue cell');
+
+  tr = Profile.buildProfileTableRow('A', 'B', 'C', true, 'SomeClass');
+  valueTd = tr.find('td.SomeClass');
+  assert.equal(valueTd.text(), 'B', 'Row should include SomeClass as style');
 });

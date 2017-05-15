@@ -6,6 +6,7 @@ module("Newgame", {
 
     // Create the newgame_page div so functions have something to modify
     if (document.getElementById('newgame_page') == null) {
+      $('body').append($('<div>', {'id': 'env_message', }));
       $('body').append($('<div>', {'id': 'newgame_page', }));
     }
 
@@ -32,7 +33,6 @@ module("Newgame", {
 
     // Page elements
     $('#newgame_page').remove();
-    $('#newgame_page').empty();
 
     BMTestUtils.deleteEnvMessage();
     BMTestUtils.cleanupFakeLogin();
@@ -64,13 +64,13 @@ test("test_Newgame.showLoggedInPage", function(assert) {
   var getNewgameDataCalled = false;
   Newgame.showPage = function() {
     assert.ok(getNewgameDataCalled, "Newgame.getNewgameData is called before Newgame.showPage");
-  }
+  };
   Newgame.getNewgameData = function(callback) {
     getNewgameDataCalled = true;
     assert.equal(callback, Newgame.showPage,
       "Newgame.getNewgameData is called with Newgame.showPage as an argument");
     callback();
-  }
+  };
 
   Newgame.showLoggedInPage();
 
@@ -90,13 +90,13 @@ test("test_Newgame.showLoggedInPage_logged_out", function(assert) {
   var getNewgameDataCalled = false;
   Newgame.showPage = function() {
     assert.ok(getNewgameDataCalled, "Newgame.getNewgameData is called before Newgame.showPage");
-  }
+  };
   Newgame.getNewgameData = function(callback) {
     getNewgameDataCalled = true;
     assert.equal(callback, Newgame.showPage,
       "Newgame.getNewgameData is called with Newgame.showPage as an argument");
     callback();
-  }
+  };
 
   Newgame.showLoggedInPage();
 
@@ -214,8 +214,8 @@ test("test_Newgame.formCreateGame", function(assert) {
   Newgame.getNewgameData(function() {
     Newgame.actionCreateGame();
     $('#opponent_name').val('tester2');
-    $('#player_button').val('Crab');
-    $('#opponent_button').val('John Kovalic');
+    $('#player_button').val('Avis');
+    $('#opponent_button').val('Avis');
     $.ajaxSetup({ async: false });
     $('#newgame_action_button').trigger('click');
     assert.equal(

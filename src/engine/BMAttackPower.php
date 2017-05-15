@@ -9,15 +9,40 @@
  * This class contains code specific to power attacks
  */
 class BMAttackPower extends BMAttack {
+    /**
+     * Type of attack
+     *
+     * @var string
+     */
     public $type = 'Power';
 
-    public function find_attack($game) {
+    /**
+     * Determine if there is at least one valid attack of this type from
+     * the set of all possible attackers and defenders.
+     *
+     * If $includeOptional is FALSE, then optional attacks are excluded.
+     * These include skill attacks involving warrior dice.
+     *
+     * @param BMGame $game
+     * @param bool $includeOptional
+     * @return bool
+     */
+    public function find_attack($game, $includeOptional = TRUE) {
         $targets = $game->defenderAllDieArray;
 
         return $this->search_onevone($game, $this->validDice, $targets);
     }
 
-    public function validate_attack($game, array $attackers, array $defenders, $helpValue = NULL) {
+    /**
+     * Determine if specified attack is valid.
+     *
+     * @param BMGame $game
+     * @param array $attackers
+     * @param array $defenders
+     * @param array $args
+     * @return bool
+     */
+    public function validate_attack($game, array $attackers, array $defenders, array $args = array()) {
         $this->validationMessage = '';
 
         if (1 != count($attackers)) {
@@ -40,11 +65,14 @@ class BMAttackPower extends BMAttack {
             return FALSE;
         }
 
+        $helpValue = NULL;
+
+        if (array_key_exists('helpValue', $args)) {
+            $helpValue = $args['helpValue'];
+        }
+
         if (is_null($helpValue)) {
-            $bounds = $this->help_bounds(
-                $this->collect_helpers($game, $attackers, $defenders),
-                $this->collect_firing_maxima($attackers)
-            );
+            $bounds = $this->help_bounds_specific($game, $attackers, $defenders);
         } else {
             $bounds = array($helpValue, $helpValue);
         }
@@ -67,9 +95,9 @@ class BMAttackPower extends BMAttack {
                 $validationArray['isIncreasedValueValid'] = TRUE;
             }
             $validationArray['isValidAttacker'] =
-                $att->is_valid_attacker($this->type, $attackers);
+                $att->is_valid_attacker($attackers);
             $validationArray['isValidTarget'] =
-                $def->is_valid_target($this->type, $defenders);
+                $def->is_valid_target($defenders);
 
             $this->validationMessage =
                 $this->get_validation_message($validationArray, $helpValue);
@@ -82,6 +110,13 @@ class BMAttackPower extends BMAttack {
         return FALSE;
     }
 
+    /**
+     * Check if skills are compatible with this type of attack.
+     *
+     * @param array $attArray
+     * @param array $defArray
+     * @return bool
+     */
     protected function are_skills_compatible(array $attArray, array $defArray) {
         if (1 != count($attArray)) {
             throw new InvalidArgumentException('attArray must have one element.');
@@ -120,15 +155,32 @@ class BMAttackPower extends BMAttack {
             return FALSE;
         }
 
+        if ($att->has_skill('Warrior')) {
+            $this->validationMessage = 'Warrior dice cannot perform power attacks.';
+            return FALSE;
+        }
+
         // defender skills
         if ($def->has_Skill('Stealth')) {
             $this->validationMessage = 'Stealth dice cannot be attacked by power attacks.';
             return FALSE;
         }
 
+        if ($def->has_Skill('Warrior')) {
+            $this->validationMessage = 'Warrior dice cannot be attacked.';
+            return FALSE;
+        }
+
         return TRUE;
     }
 
+    /**
+     * Determine error message for incorrect power attack
+     *
+     * @param array $validationArray
+     * @param int $helpValue
+     * @return string
+     */
     protected function get_validation_message($validationArray, $helpValue) {
         if (!$validationArray['isDieLargeEnough']) {
             return 'Attacking die size must be at least as large as target die value';
